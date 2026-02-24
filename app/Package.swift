@@ -10,9 +10,13 @@ let package = Package(
     products: [
         .executable(name: "ZMKHud", targets: ["ZMKHud"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.0")
+    ],
     targets: [
         .executableTarget(
             name: "ZMKHud",
+            dependencies: ["Yams"],
             path: "Sources"
         ),
         .testTarget(

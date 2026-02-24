@@ -4,6 +4,7 @@ struct HUDConfig: Codable {
     var keymapPath: String?
     var layoutPath: String?
     var selectedLayoutId: String?
+    var keymapDrawerConfigPath: String?  // Path to keymap_drawer.config.yaml
     var customLabels: [String: String]
     var tapDanceShifted: [String: String]  // Maps td_name -> double-tap label
     var hudPosition: String
@@ -14,6 +15,7 @@ struct HUDConfig: Codable {
         keymapPath: String? = nil,
         layoutPath: String? = nil,
         selectedLayoutId: String? = nil,
+        keymapDrawerConfigPath: String? = nil,
         customLabels: [String: String] = [:],
         tapDanceShifted: [String: String] = [:],
         hudPosition: String = "topRight",
@@ -23,6 +25,7 @@ struct HUDConfig: Codable {
         self.keymapPath = keymapPath
         self.layoutPath = layoutPath
         self.selectedLayoutId = selectedLayoutId
+        self.keymapDrawerConfigPath = keymapDrawerConfigPath
         self.customLabels = customLabels
         self.tapDanceShifted = tapDanceShifted
         self.hudPosition = hudPosition
@@ -116,6 +119,8 @@ class ConfigManager {
                 config.layoutPath = value.isEmpty ? nil : value
             case "selected_layout_id":
                 config.selectedLayoutId = value.isEmpty ? nil : value
+            case "keymap_drawer_config_path":
+                config.keymapDrawerConfigPath = value.isEmpty ? nil : value
             case "hud_position":
                 config.hudPosition = value
             case "hud_opacity":
@@ -138,6 +143,7 @@ class ConfigManager {
         lines.append("keymap_path: \(config.keymapPath ?? "")")
         lines.append("layout_path: \(config.layoutPath ?? "")")
         lines.append("selected_layout_id: \(config.selectedLayoutId ?? "")")
+        lines.append("keymap_drawer_config_path: \(config.keymapDrawerConfigPath ?? "")")
         lines.append("")
         lines.append("# HUD Appearance")
         lines.append("hud_position: \(config.hudPosition)")

@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import SwiftUI
 
 class AppState: ObservableObject {
     @Published var currentLayer: Int = 0
@@ -21,6 +22,10 @@ class AppState: ObservableObject {
     @Published var bindingOffset: Int = 0
     @Published var customLabels: [String: String] = [:]
     @Published var tapDanceShifted: [String: String] = [:]
+    @Published var colorScheme: ColorScheme = .light
+    @Published var legends: [Int: KeyLegend] = [:] // Key index -> legend data
+    @Published var keymapDrawerConfig: KeymapDrawerConfig?
+    @Published var keymapDrawerConfigPath: String?
     
     private let configManager: ConfigManager
     
@@ -66,6 +71,15 @@ class AppState: ObservableObject {
         customLabels = config.customLabels
         tapDanceShifted = config.tapDanceShifted
         
+        // Load keymap_drawer config first (it may override custom labels)
+        if let path = config.keymapDrawerConfigPath, !path.isEmpty {
+            if path.hasPrefix("http") {
+                loadKeymapDrawerConfig(fromURL: path)
+            } else {
+                loadKeymapDrawerConfig(fromPath: path)
+            }
+        }
+        
         if let path = config.keymapPath, !path.isEmpty {
             if path.hasPrefix("http") {
                 loadKeymapFromURL(path)
@@ -88,6 +102,7 @@ class AppState: ObservableObject {
             keymapPath: keymapPath,
             layoutPath: layoutPath,
             selectedLayoutId: selectedLayoutId,
+            keymapDrawerConfigPath: keymapDrawerConfigPath,
             customLabels: customLabels,
             tapDanceShifted: tapDanceShifted,
             hudPosition: hudPosition,
@@ -170,18 +185,27 @@ class AppState: ObservableObject {
     }
     
     func loadLayoutFromFile(_ path: String, layoutId: String? = nil) {
-        let options = LayoutLoader.shared.getAvailableLayoutsFromFile(path)
-        availableLayouts = options
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+            layoutLoadError = "Failed to read layout file"
+            return
+        }
         
-        let effectiveLayoutId = layoutId ?? options.first?.id
+        // Get available layout options
+        let layoutNames = QMKLayoutParser.availableLayouts(from: data)
+        availableLayouts = layoutNames.map { name in
+            LayoutOption(id: name, name: name, keyCount: 0)
+        }
+        
+        let effectiveLayoutId = layoutId ?? layoutNames.first
         selectedLayoutId = effectiveLayoutId
         
-        if let layout = LayoutLoader.shared.loadFromFile(path, layoutId: effectiveLayoutId) {
+        if let layout = QMKLayoutParser.parse(data: data, layoutName: effectiveLayoutId) {
             physicalLayout = layout
             layoutPath = path
             layoutLoadError = nil
             saveConfig()
             autoDetectBindingOffset()
+            updateLegends()
         } else {
             layoutLoadError = "Failed to parse layout file"
         }
@@ -191,32 +215,51 @@ class AppState: ObservableObject {
         isLoadingLayout = true
         layoutLoadError = nil
         
-        LayoutLoader.shared.getAvailableLayoutsFromURL(urlString) { [weak self] options in
-            self?.availableLayouts = options
-            
-            if options.count > 1 && layoutId == nil {
+        // Normalize GitHub URLs
+        let normalizedURL = normalizeGitHubURL(urlString)
+        guard let url = URL(string: normalizedURL) else {
+            isLoadingLayout = false
+            layoutLoadError = "Invalid URL"
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
+            DispatchQueue.main.async {
                 self?.isLoadingLayout = false
-                self?.layoutPath = urlString
-                self?.saveConfig()
-                return
-            }
-            
-            let effectiveLayoutId = layoutId ?? options.first?.id
-            self?.selectedLayoutId = effectiveLayoutId
-            
-            LayoutLoader.shared.loadFromURL(urlString, layoutId: effectiveLayoutId) { [weak self] layout in
-                self?.isLoadingLayout = false
-                if let layout = layout {
+                
+                guard let data = data else {
+                    self?.layoutLoadError = "Failed to fetch layout: \(error?.localizedDescription ?? "unknown error")"
+                    return
+                }
+                
+                // Get available layout options
+                let layoutNames = QMKLayoutParser.availableLayouts(from: data)
+                self?.availableLayouts = layoutNames.map { name in
+                    LayoutOption(id: name, name: name, keyCount: 0)
+                }
+                
+                // If multiple layouts and no selection, store path and wait for user to pick
+                if layoutNames.count > 1 && layoutId == nil {
+                    self?.layoutPath = urlString
+                    self?.saveConfig()
+                    return
+                }
+                
+                let effectiveLayoutId = layoutId ?? layoutNames.first
+                self?.selectedLayoutId = effectiveLayoutId
+                
+                if let layout = QMKLayoutParser.parse(data: data, layoutName: effectiveLayoutId) {
                     self?.physicalLayout = layout
                     self?.layoutPath = urlString
                     self?.layoutLoadError = nil
                     self?.saveConfig()
                     self?.autoDetectBindingOffset()
+                    self?.updateLegends()
                 } else {
-                    self?.layoutLoadError = "Failed to load layout from URL"
+                    self?.layoutLoadError = "Failed to parse layout"
                 }
             }
-        }
+        }.resume()
     }
     
     func selectLayout(_ layoutId: String) {
@@ -224,21 +267,9 @@ class AppState: ObservableObject {
         selectedLayoutId = layoutId
         
         if path.hasPrefix("http") {
-            isLoadingLayout = true
-            LayoutLoader.shared.loadFromURL(path, layoutId: layoutId) { [weak self] layout in
-                self?.isLoadingLayout = false
-                if let layout = layout {
-                    self?.physicalLayout = layout
-                    self?.saveConfig()
-                    self?.autoDetectBindingOffset()
-                }
-            }
+            loadLayoutFromURL(path, layoutId: layoutId)
         } else {
-            if let layout = LayoutLoader.shared.loadFromFile(path, layoutId: layoutId) {
-                physicalLayout = layout
-                saveConfig()
-                autoDetectBindingOffset()
-            }
+            loadLayoutFromFile(path, layoutId: layoutId)
         }
     }
     
@@ -256,10 +287,28 @@ class AppState: ObservableObject {
         guard !hasExplicitLayout, let keymap = keymap else { return }
         
         if let rowStructure = keymap.rowStructure, !rowStructure.isEmpty {
-            physicalLayout = LayoutLoader.shared.createFallbackFromRowStructure(rowStructure)
+            // Create a split layout based on row structure
+            let generator = OrthoLayoutGenerator(
+                split: true,
+                rows: rowStructure.count,
+                columns: (rowStructure.first ?? 10) / 2,
+                thumbs: .count(rowStructure.last ?? 3)
+            )
+            physicalLayout = generator.generate(keyW: 56, keyH: 56, splitGap: 30)
         } else if let firstLayer = keymap.layers.first {
-            physicalLayout = LayoutLoader.shared.createFallbackGrid(keyCount: firstLayer.bindings.count)
+            // Create a simple grid fallback
+            let keyCount = firstLayer.bindings.count
+            let cols = min(12, max(6, Int(ceil(sqrt(Double(keyCount) * 2)))))
+            let rows = Int(ceil(Double(keyCount) / Double(cols)))
+            let generator = OrthoLayoutGenerator(
+                split: false,
+                rows: rows,
+                columns: cols,
+                thumbs: .count(0)
+            )
+            physicalLayout = generator.generate(keyW: 56, keyH: 56, splitGap: 0)
         }
+        updateLegends()
     }
     
     func currentBindings(for layer: Int) -> [Binding] {
@@ -279,7 +328,7 @@ class AppState: ObservableObject {
               !keymap.layers.isEmpty else { return }
         
         let bindingCount = keymap.layers[0].bindings.count
-        let positionCount = layout.positions.count
+        let positionCount = layout.count
         
         if bindingCount <= positionCount {
             bindingOffset = 0
@@ -310,5 +359,131 @@ class AppState: ObservableObject {
             bindingOffset = 0
         }
     }
+    
+    /// Update legends from current layer bindings
+    func updateLegends() {
+        guard keymap != nil else {
+            legends = [:]
+            return
+        }
+        
+        var newLegends: [Int: KeyLegend] = [:]
+        let bindings = currentBindings(for: currentLayer)
+        
+        for (index, binding) in bindings.enumerated() {
+            let tap = binding.displayLabel(with: customLabels)
+            let hold = binding.holdLabel
+            
+            // Get shifted value for tap-dance keys
+            var shifted: String? = nil
+            if case .tapDance(let name) = binding.type {
+                shifted = tapDanceShifted[name]
+            } else if case .holdTap(_, let tapKey) = binding.type {
+                let tdName = "td_" + tapKey.lowercased()
+                shifted = tapDanceShifted[tdName]
+            }
+            
+            // Determine type
+            var type: String? = nil
+            if case .transparent = binding.type {
+                type = "trans"
+            }
+            
+            newLegends[index] = KeyLegend(tap: tap, hold: hold, shifted: shifted, type: type)
+        }
+        
+        legends = newLegends
+    }
+    
+    /// Normalize GitHub URLs to raw format
+    private func normalizeGitHubURL(_ urlString: String) -> String {
+        if urlString.contains("github.com") && urlString.contains("/blob/") {
+            return urlString
+                .replacingOccurrences(of: "github.com", with: "raw.githubusercontent.com")
+                .replacingOccurrences(of: "/blob/", with: "/")
+        }
+        return urlString
+    }
+    
+    // MARK: - Keymap Drawer Config Loading
+    
+    /// Load keymap_drawer config from a file path
+    func loadKeymapDrawerConfig(fromPath path: String) {
+        do {
+            let config = try KeymapDrawerConfigLoader.load(fromPath: path)
+            keymapDrawerConfig = config
+            keymapDrawerConfigPath = path
+            applyKeymapDrawerConfig(config)
+        } catch {
+            print("Failed to load keymap_drawer config: \(error)")
+        }
+    }
+    
+    /// Load keymap_drawer config from a URL
+    func loadKeymapDrawerConfig(fromURL urlString: String) {
+        let normalizedURL = normalizeGitHubURL(urlString)
+        guard let url = URL(string: normalizedURL) else { return }
+        
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
+            guard let data = data else {
+                print("Failed to fetch keymap_drawer config: \(error?.localizedDescription ?? "unknown error")")
+                return
+            }
+            
+            do {
+                let config = try KeymapDrawerConfigLoader.load(from: data)
+                DispatchQueue.main.async {
+                    self?.keymapDrawerConfig = config
+                    self?.keymapDrawerConfigPath = urlString
+                    self?.applyKeymapDrawerConfig(config)
+                }
+            } catch {
+                print("Failed to parse keymap_drawer config: \(error)")
+            }
+        }.resume()
+    }
+    
+    /// Apply settings from keymap_drawer config
+    private func applyKeymapDrawerConfig(_ config: KeymapDrawerConfig) {
+        // Extract custom labels from raw_binding_map
+        if let rawBindingMap = config.parseConfig?.rawBindingMap {
+            for (binding, legend) in rawBindingMap {
+                if let tap = legend.tap {
+                    customLabels[binding] = tap
+                }
+                // Store shifted values for tap-dance keys
+                if let shifted = legend.shifted {
+                    tapDanceShifted[binding] = shifted
+                }
+            }
+        }
+        
+        // Extract colors from svg_extra_style
+        if let svgStyle = config.drawConfig?.svgExtraStyle {
+            // The ColorScheme.fromCSS handles parsing the CSS
+            // We need to check system appearance for dark mode
+            let isDark: Bool
+            switch config.drawConfig?.darkMode {
+            case .enabled:
+                isDark = true
+            case .disabled:
+                isDark = false
+            case .auto, .none:
+                // Use system appearance
+                isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            }
+            colorScheme = ColorScheme.fromCSS(svgStyle, darkMode: isDark)
+        }
+        
+        updateLegends()
+    }
 
+}
+
+// MARK: - Layout Option
+
+struct LayoutOption: Identifiable, Hashable {
+    let id: String
+    let name: String
+    let keyCount: Int
 }

@@ -72,7 +72,7 @@ struct SettingsView: View {
                                     .lineLimit(1)
                                     .truncationMode(.middle)
                                 if let layout = appState.physicalLayout {
-                                    Text("✓ \(layout.name) (\(layout.positions.count) keys)")
+                                    Text("✓ \(appState.selectedLayoutId ?? "Layout") (\(layout.count) keys)")
                                         .foregroundColor(.green)
                                         .font(.caption)
                                 }
@@ -80,7 +80,7 @@ struct SettingsView: View {
                                 Text("Auto-inferred from keymap")
                                     .foregroundColor(.secondary)
                                 if let layout = appState.physicalLayout {
-                                    Text("Using: \(layout.name)")
+                                    Text("Using: Auto layout (\(layout.count) keys)")
                                         .foregroundColor(.orange)
                                         .font(.caption)
                                 }
@@ -98,13 +98,21 @@ struct SettingsView: View {
                     }
                     
                     if appState.availableLayouts.count > 1 {
-                        Picker("Layout Size", selection: selectedLayoutBinding) {
+                        Picker("Layout Variant", selection: selectedLayoutBinding) {
                             ForEach(appState.availableLayouts) { option in
                                 Text("\(option.name) (\(option.keyCount) keys)")
                                     .tag(option.id)
                             }
                         }
                         .pickerStyle(.menu)
+                    } else if let layoutId = appState.selectedLayoutId, !layoutId.isEmpty {
+                        HStack {
+                            Text("Selected:")
+                                .foregroundColor(.secondary)
+                            Text(layoutId)
+                                .fontWeight(.medium)
+                        }
+                        .font(.caption)
                     }
                     
                     HStack {

@@ -56,11 +56,26 @@ class HUDWindow {
 
 struct HUDContentView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.colorScheme) private var systemColorScheme
     
     var body: some View {
         HStack(spacing: 16) {
             LeftComboPanel()
-            KeyboardView()
+            
+            if let layout = appState.physicalLayout {
+                KeyboardCanvas(
+                    layout: layout,
+                    colorScheme: systemColorScheme == .dark ? .dark : .light,
+                    legends: appState.legends,
+                    pressedKeys: appState.pressedKeys,
+                    currentLayer: appState.currentLayer
+                )
+            } else {
+                Text("No layout loaded")
+                    .foregroundColor(.secondary)
+                    .frame(width: 400, height: 200)
+            }
+            
             RightComboPanel()
         }
         .padding(20)
@@ -68,6 +83,9 @@ struct HUDContentView: View {
             VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
         )
+        .onChange(of: appState.currentLayer) { _ in
+            appState.updateLegends()
+        }
     }
 }
 
