@@ -43,6 +43,25 @@ struct Binding {
         displayLabel(with: [:])
     }
     
+    /// Get parsed glyph for rendering (returns SF Symbol info if applicable)
+    func parsedDisplayLabel(with customLabels: [String: String] = [:]) -> ParsedGlyph {
+        switch type {
+        case .tapDance(let name):
+            if let custom = customLabels[name] {
+                return GlyphParser.parse(custom)
+            }
+            return ParsedGlyph(text: formatTapDanceName(name), isSFSymbol: false)
+        case .custom(let raw):
+            if let custom = customLabels[raw] {
+                return GlyphParser.parse(custom)
+            }
+            return ParsedGlyph(text: raw, isSFSymbol: false)
+        default:
+            // For most types, use the regular displayLabel
+            return ParsedGlyph(text: displayLabel(with: customLabels), isSFSymbol: false)
+        }
+    }
+    
     func displayLabel(with customLabels: [String: String]) -> String {
         switch type {
         case .keyPress(let key):
@@ -58,7 +77,7 @@ struct Binding {
             return ZMKKeycodeMap.convert(tap)
         case .tapDance(let name):
             if let custom = customLabels[name] {
-                return custom
+                return parseGlyphLabel(custom)
             }
             return formatTapDanceName(name)
         case .transparent:
@@ -67,7 +86,7 @@ struct Binding {
             return ""
         case .custom(let raw):
             if let custom = customLabels[raw] {
-                return custom
+                return parseGlyphLabel(custom)
             }
             return raw
         // New behavior types
@@ -182,6 +201,14 @@ struct Binding {
         }
         
         return clean
+    }
+    
+    /// Parse glyph syntax in custom labels
+    private func parseGlyphLabel(_ label: String) -> String {
+        let parsed = GlyphParser.parse(label)
+        // For display purposes, we return the text
+        // The view layer can check isSFSymbol to render appropriately
+        return parsed.text
     }
 }
 
