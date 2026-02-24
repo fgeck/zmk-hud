@@ -31,7 +31,7 @@ struct Binding {
         switch type {
         case .keyPress(let key):
             return key
-        case .layerTap(let layer, let key):
+        case .layerTap(_, let key):
             return key
         case .layerMomentary(let layer):
             return "L\(layer)"

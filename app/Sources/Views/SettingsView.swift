@@ -6,54 +6,68 @@ struct SettingsView: View {
     @AppStorage("comboPanelSide") private var comboPanelSide: ComboPanelSide = .right
     @AppStorage("hudOpacity") private var hudOpacity: Double = 0.95
     @AppStorage("hudScale") private var hudScale: Double = 1.0
+    @State private var githubURL: String = ""
     
     var body: some View {
-        Form {
-            Section("Keymap") {
-                HStack {
-                    Text(appState.keymapPath ?? "No keymap loaded")
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    
-                    Spacer()
-                    
-                    Button("Choose...") {
-                        chooseKeymapFile()
+        VStack(alignment: .leading, spacing: 20) {
+            GroupBox("Keymap") {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text(appState.keymapPath ?? "No keymap loaded")
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Spacer()
+                        Button("Choose...") {
+                            chooseKeymapFile()
+                        }
                     }
+                    
+                    TextField("GitHub URL", text: $githubURL)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: githubURL) { newValue in
+                            if newValue.hasPrefix("http") {
+                                appState.loadKeymapFromURL(newValue)
+                            }
+                        }
                 }
-                
-                TextField("GitHub URL", text: Binding(
-                    get: { appState.keymapPath ?? "" },
-                    set: { if $0.hasPrefix("http") { appState.loadKeymapFromURL($0) }}
-                ))
-                .textFieldStyle(.roundedBorder)
+                .padding(.vertical, 4)
             }
             
-            Section("Position") {
-                Picker("HUD Position", selection: $hudPosition) {
-                    ForEach(HUDPosition.allCases, id: \.self) { position in
-                        Text(position.displayName).tag(position)
+            GroupBox("Position") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Picker("HUD Position", selection: $hudPosition) {
+                        ForEach(HUDPosition.allCases, id: \.self) { position in
+                            Text(position.displayName).tag(position)
+                        }
+                    }
+                    
+                    Picker("Combo Panel", selection: $comboPanelSide) {
+                        Text("Left").tag(ComboPanelSide.left)
+                        Text("Right").tag(ComboPanelSide.right)
                     }
                 }
-                
-                Picker("Combo Panel", selection: $comboPanelSide) {
-                    Text("Left").tag(ComboPanelSide.left)
-                    Text("Right").tag(ComboPanelSide.right)
-                }
+                .padding(.vertical, 4)
             }
             
-            Section("Appearance") {
-                Slider(value: $hudOpacity, in: 0.5...1.0) {
-                    Text("Opacity")
+            GroupBox("Appearance") {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Opacity")
+                        Slider(value: $hudOpacity, in: 0.5...1.0)
+                    }
+                    
+                    HStack {
+                        Text("Scale")
+                        Slider(value: $hudScale, in: 0.5...1.5)
+                    }
                 }
-                
-                Slider(value: $hudScale, in: 0.5...1.5) {
-                    Text("Scale")
-                }
+                .padding(.vertical, 4)
             }
+            
+            Spacer()
         }
-        .formStyle(.grouped)
+        .padding()
         .frame(width: 400, height: 350)
     }
     
