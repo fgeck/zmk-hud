@@ -166,8 +166,8 @@ enum KeymapParser {
         return count
     }
     
-    private static func parseBindings(from bindingsRaw: String) -> [Binding] {
-        var bindings: [Binding] = []
+    private static func parseBindings(from bindingsRaw: String) -> [KeyBinding] {
+        var bindings: [KeyBinding] = []
         let tokens = tokenizeBindings(bindingsRaw)
         
         for token in tokens {
@@ -209,12 +209,12 @@ enum KeymapParser {
         return tokens
     }
     
-    private static func createBinding(from rawCode: String) -> Binding {
+    private static func createBinding(from rawCode: String) -> KeyBinding {
         let code = rawCode.hasPrefix("&") ? String(rawCode.dropFirst()) : rawCode
         let parts = code.split(separator: " ", omittingEmptySubsequences: true).map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
         
         guard !parts.isEmpty else {
-            return Binding(type: .custom(rawCode), raw: rawCode)
+            return KeyBinding(type: .custom(rawCode), raw: rawCode)
         }
         
         let behavior = parts[0]
@@ -222,89 +222,89 @@ enum KeymapParser {
         switch behavior {
         case "kp":
             let key = parts.count > 1 ? parts[1] : ""
-            return Binding(type: .keyPress(formatKey(key)), raw: rawCode)
+            return KeyBinding(type: .keyPress(formatKey(key)), raw: rawCode)
             
         case "sk":  // Sticky key - show as "Sticky ⌘" etc.
             let mod = parts.count > 1 ? parts[1] : ""
             let modSymbol = formatModifier(mod)
-            return Binding(type: .keyPress("Sticky " + modSymbol), raw: rawCode)
+            return KeyBinding(type: .keyPress("Sticky " + modSymbol), raw: rawCode)
             
         case "lt":
             guard parts.count >= 3, let layer = Int(parts[1]) else {
-                return Binding(type: .custom(rawCode), raw: rawCode)
+                return KeyBinding(type: .custom(rawCode), raw: rawCode)
             }
-            return Binding(type: .layerTap(layer, formatKey(parts[2])), raw: rawCode)
+            return KeyBinding(type: .layerTap(layer, formatKey(parts[2])), raw: rawCode)
             
         case "mo":
             guard parts.count >= 2, let layer = Int(parts[1]) else {
-                return Binding(type: .custom(rawCode), raw: rawCode)
+                return KeyBinding(type: .custom(rawCode), raw: rawCode)
             }
-            return Binding(type: .layerMomentary(layer), raw: rawCode)
+            return KeyBinding(type: .layerMomentary(layer), raw: rawCode)
             
         case "mt":
             guard parts.count >= 3 else {
-                return Binding(type: .custom(rawCode), raw: rawCode)
+                return KeyBinding(type: .custom(rawCode), raw: rawCode)
             }
-            return Binding(type: .modTap(formatModifier(parts[1]), formatKey(parts[2])), raw: rawCode)
+            return KeyBinding(type: .modTap(formatModifier(parts[1]), formatKey(parts[2])), raw: rawCode)
             
         case "trans":
-            return Binding(type: .transparent, raw: rawCode)
+            return KeyBinding(type: .transparent, raw: rawCode)
             
         case "none":
-            return Binding(type: .none, raw: rawCode)
+            return KeyBinding(type: .none, raw: rawCode)
             
         // Caps Word behavior
         case "caps_word":
-            return Binding(type: .capsWord, raw: rawCode)
+            return KeyBinding(type: .capsWord, raw: rawCode)
             
         // Key Repeat behavior
         case "key_repeat":
-            return Binding(type: .keyRepeat, raw: rawCode)
+            return KeyBinding(type: .keyRepeat, raw: rawCode)
             
         // Sticky layer
         case "sl":
             guard parts.count >= 2, let layer = Int(parts[1]) else {
-                return Binding(type: .custom(rawCode), raw: rawCode)
+                return KeyBinding(type: .custom(rawCode), raw: rawCode)
             }
-            return Binding(type: .stickyLayer(layer), raw: rawCode)
+            return KeyBinding(type: .stickyLayer(layer), raw: rawCode)
             
         // Toggle layer
         case "tog":
             guard parts.count >= 2, let layer = Int(parts[1]) else {
-                return Binding(type: .custom(rawCode), raw: rawCode)
+                return KeyBinding(type: .custom(rawCode), raw: rawCode)
             }
-            return Binding(type: .toggleLayer(layer), raw: rawCode)
+            return KeyBinding(type: .toggleLayer(layer), raw: rawCode)
             
         // To layer (switch to layer)
         case "to":
             guard parts.count >= 2, let layer = Int(parts[1]) else {
-                return Binding(type: .custom(rawCode), raw: rawCode)
+                return KeyBinding(type: .custom(rawCode), raw: rawCode)
             }
-            return Binding(type: .toLayer(layer), raw: rawCode)
+            return KeyBinding(type: .toLayer(layer), raw: rawCode)
             
         // Bootloader
         case "bootloader":
-            return Binding(type: .bootloader, raw: rawCode)
+            return KeyBinding(type: .bootloader, raw: rawCode)
             
         // Reset / sys_reset
         case "sys_reset", "reset":
-            return Binding(type: .reset, raw: rawCode)
+            return KeyBinding(type: .reset, raw: rawCode)
             
         // Bluetooth behaviors
         case "bt":
             // Join all parameters after 'bt' (e.g., "BT_SEL 0" -> "BT_SEL 0")
             let action = parts.dropFirst().joined(separator: " ")
-            return Binding(type: .bluetooth(action), raw: rawCode)
+            return KeyBinding(type: .bluetooth(action), raw: rawCode)
             
         // Output selection (USB/BLE)
         case "out":
             let output = parts.count > 1 ? parts[1] : ""
-            return Binding(type: .outputSelect(output), raw: rawCode)
+            return KeyBinding(type: .outputSelect(output), raw: rawCode)
 
         default:
             // Tap-dance behaviors
             if behavior.hasPrefix("td_") || behavior.hasPrefix("TD_") {
-                return Binding(type: .tapDance(behavior), raw: rawCode)
+                return KeyBinding(type: .tapDance(behavior), raw: rawCode)
             }
             
             // Nav behaviors (nav_left, nav_right, nav_up, nav_down, nav_bspc, nav_del)
@@ -312,7 +312,7 @@ enum KeymapParser {
                 if parts.count >= 3 {
                     let holdKey = parts[1]  // e.g., LG(LEFT)
                     let tapKey = parts[2]   // e.g., LEFT
-                    return Binding(type: .holdTap(formatKey(holdKey), formatKey(tapKey)), raw: rawCode)
+                    return KeyBinding(type: .holdTap(formatKey(holdKey), formatKey(tapKey)), raw: rawCode)
                 }
             }
             
@@ -328,18 +328,18 @@ enum KeymapParser {
                     } else {
                         tapLabel = formatKey(parts[2])
                     }
-                    return Binding(type: .holdTap(formatModifier(parts[1]), tapLabel), raw: rawCode)
+                    return KeyBinding(type: .holdTap(formatModifier(parts[1]), tapLabel), raw: rawCode)
                 }
             }
             
             // Layer-tap variants
             if behavior.lowercased().contains("lt") {
                 if parts.count >= 3, let layer = Int(parts[1]) {
-                    return Binding(type: .layerTap(layer, formatKey(parts[2])), raw: rawCode)
+                    return KeyBinding(type: .layerTap(layer, formatKey(parts[2])), raw: rawCode)
                 }
             }
             
-            return Binding(type: .custom(rawCode), raw: rawCode)
+            return KeyBinding(type: .custom(rawCode), raw: rawCode)
         }
     }
     
@@ -425,7 +425,7 @@ enum KeymapParser {
         return positions.isEmpty ? nil : positions
     }
     
-    private static func extractBinding(from block: String) -> Binding? {
+    private static func extractBinding(from block: String) -> KeyBinding? {
         let pattern = "bindings\\s*=\\s*<([^>]+)>"
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(in: block, range: NSRange(block.startIndex..., in: block)),

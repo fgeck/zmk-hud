@@ -138,7 +138,7 @@ final class ComboRendererTests: XCTestCase {
         let combo = Combo(
             name: "test_combo",
             positions: [0, 1],
-            result: Binding(type: .keyPress("ESC"), raw: "&kp ESC"),
+            result: KeyBinding(type: .keyPress("ESC"), raw: "&kp ESC"),
             layers: [0],
             timeoutMs: 50
         )
@@ -154,7 +154,7 @@ final class ComboRendererTests: XCTestCase {
         let combo = Combo(
             name: "test_combo",
             positions: [0, 1],
-            result: Binding(type: .tapDance("td_esc"), raw: "&td_esc"),
+            result: KeyBinding(type: .tapDance("td_esc"), raw: "&td_esc"),
             layers: nil,
             timeoutMs: nil
         )

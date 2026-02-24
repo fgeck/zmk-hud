@@ -4,36 +4,23 @@ struct LeftComboPanel: View {
     @EnvironmentObject var appState: AppState
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("LEFT COMBOS")
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(.secondary)
-            
-            if let keymap = appState.keymap {
-                let filteredCombos = filterCombosForCurrentLayer(keymap.combos)
-                let leftCombos = filteredCombos.filter { combo in
-                    guard let firstPos = combo.positions.first else { return false }
-                    return firstPos < 29
-                }
-                
-                if leftCombos.isEmpty {
-                    Text("No combos")
-                        .foregroundColor(.secondary)
-                        .font(.caption)
-                } else {
-                    ComboListView(combos: leftCombos, keymap: keymap, customLabels: appState.customLabels)
-                }
-            } else {
-                Text("No keymap")
-                    .foregroundColor(.secondary)
-                    .font(.caption)
-            }
+        ComboPanelContainer(
+            title: "LEFT",
+            alignment: .leading,
+            combos: leftCombos,
+            keymap: appState.keymap,
+            customLabels: appState.customLabels,
+            alignRight: false
+        )
+    }
+    
+    private var leftCombos: [Combo] {
+        guard let keymap = appState.keymap else { return [] }
+        let filtered = filterCombosForCurrentLayer(keymap.combos)
+        return filtered.filter { combo in
+            guard let firstPos = combo.positions.first else { return false }
+            return firstPos < 29
         }
-        .frame(width: 140)
-        .padding(12)
-        .background(Color.gray.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
     
     private func filterCombosForCurrentLayer(_ combos: [Combo]) -> [Combo] {
@@ -51,36 +38,23 @@ struct RightComboPanel: View {
     @EnvironmentObject var appState: AppState
     
     var body: some View {
-        VStack(alignment: .trailing, spacing: 12) {
-            Text("RIGHT COMBOS")
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(.secondary)
-            
-            if let keymap = appState.keymap {
-                let filteredCombos = filterCombosForCurrentLayer(keymap.combos)
-                let rightCombos = filteredCombos.filter { combo in
-                    guard let firstPos = combo.positions.first else { return false }
-                    return firstPos >= 29
-                }
-                
-                if rightCombos.isEmpty {
-                    Text("No combos")
-                        .foregroundColor(.secondary)
-                        .font(.caption)
-                } else {
-                    ComboListView(combos: rightCombos, keymap: keymap, customLabels: appState.customLabels, alignRight: true)
-                }
-            } else {
-                Text("No keymap")
-                    .foregroundColor(.secondary)
-                    .font(.caption)
-            }
+        ComboPanelContainer(
+            title: "RIGHT",
+            alignment: .trailing,
+            combos: rightCombos,
+            keymap: appState.keymap,
+            customLabels: appState.customLabels,
+            alignRight: true
+        )
+    }
+    
+    private var rightCombos: [Combo] {
+        guard let keymap = appState.keymap else { return [] }
+        let filtered = filterCombosForCurrentLayer(keymap.combos)
+        return filtered.filter { combo in
+            guard let firstPos = combo.positions.first else { return false }
+            return firstPos >= 29
         }
-        .frame(width: 140)
-        .padding(12)
-        .background(Color.gray.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
     
     private func filterCombosForCurrentLayer(_ combos: [Combo]) -> [Combo] {
@@ -91,6 +65,83 @@ struct RightComboPanel: View {
             }
             return comboLayers.contains(currentLayer)
         }
+    }
+}
+
+// MARK: - Shared Combo Panel Container
+
+struct ComboPanelContainer: View {
+    let title: String
+    let alignment: HorizontalAlignment
+    let combos: [Combo]
+    let keymap: Keymap?
+    let customLabels: [String: String]
+    let alignRight: Bool
+    
+    var body: some View {
+        VStack(alignment: alignment, spacing: 8) {
+            // Header
+            HStack(spacing: 6) {
+                if !alignRight {
+                    Image(systemName: "keyboard.chevron.compact.left")
+                        .font(.caption)
+                        .foregroundColor(.accentColor)
+                }
+                
+                Text(title)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(.secondary)
+                
+                if alignRight {
+                    Image(systemName: "keyboard.chevron.compact.right")
+                        .font(.caption)
+                        .foregroundColor(.accentColor)
+                }
+            }
+            
+            // Combo count badge
+            if !combos.isEmpty {
+                Text("\(combos.count) combo\(combos.count == 1 ? "" : "s")")
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.secondary.opacity(0.1))
+                    .clipShape(Capsule())
+            }
+            
+            Divider()
+                .frame(width: 60)
+            
+            // Combo list
+            if let keymap = keymap, !combos.isEmpty {
+                ComboListView(combos: combos, keymap: keymap, customLabels: customLabels, alignRight: alignRight)
+            } else if combos.isEmpty {
+                VStack(spacing: 4) {
+                    Image(systemName: "keyboard.badge.ellipsis")
+                        .font(.title3)
+                        .foregroundColor(Color.secondary.opacity(0.6))
+                    Text("No combos")
+                        .font(.caption2)
+                        .foregroundColor(Color.secondary.opacity(0.6))
+                }
+                .padding(.vertical, 8)
+            } else {
+                Text("No keymap")
+                    .font(.caption)
+                    .foregroundColor(Color.secondary.opacity(0.6))
+            }
+        }
+        .frame(width: 130)
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.primary.opacity(0.03))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                )
+        )
     }
 }
 
@@ -160,7 +211,7 @@ struct ComboRow: View {
         }.joined(separator: "+")
     }
     
-    private func friendlyKeyLabel(for binding: Binding) -> String {
+    private func friendlyKeyLabel(for binding: KeyBinding) -> String {
         switch binding.type {
         case .keyPress(let key):
             return formatKeyName(key)

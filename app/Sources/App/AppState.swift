@@ -26,6 +26,7 @@ class AppState: ObservableObject {
     @Published var legends: [Int: KeyLegend] = [:] // Key index -> legend data
     @Published var keymapDrawerConfig: KeymapDrawerConfig?
     @Published var keymapDrawerConfigPath: String?
+    @Published var isConnected: Bool = false
     
     private let configManager: ConfigManager
     
@@ -311,7 +312,7 @@ class AppState: ObservableObject {
         updateLegends()
     }
     
-    func currentBindings(for layer: Int) -> [Binding] {
+    func currentBindings(for layer: Int) -> [KeyBinding] {
         guard let keymap = keymap, layer < keymap.layers.count else {
             return []
         }

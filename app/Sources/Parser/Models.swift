@@ -9,10 +9,10 @@ struct Keymap {
 
 struct Layer {
     var name: String
-    var bindings: [Binding]
+    var bindings: [KeyBinding]
 }
 
-struct Binding {
+struct KeyBinding {
     enum BindingType {
         case keyPress(String)
         case layerTap(Int, String)
@@ -215,7 +215,7 @@ struct Binding {
 struct Combo {
     var name: String
     var positions: [Int]
-    var result: Binding
+    var result: KeyBinding
     var layers: [Int]?
     var timeoutMs: Int?
 }

@@ -33,26 +33,79 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupMenuBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         
-        if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "keyboard", accessibilityDescription: "ZMK HUD")
-        }
+        updateMenuBarIcon()
         
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Show HUD", action: #selector(showHUD), keyEquivalent: "h"))
-        menu.addItem(NSMenuItem(title: "Hide HUD", action: #selector(hideHUD), keyEquivalent: ""))
+        
+        // HUD controls
+        let showItem = NSMenuItem(title: "Show HUD", action: #selector(showHUD), keyEquivalent: "h")
+        showItem.keyEquivalentModifierMask = [.command, .shift]
+        menu.addItem(showItem)
+        
+        let hideItem = NSMenuItem(title: "Hide HUD", action: #selector(hideHUD), keyEquivalent: "")
+        menu.addItem(hideItem)
+        
         menu.addItem(NSMenuItem.separator())
         
+        // Test mode
         testModeMenuItem = NSMenuItem(title: "Enable Test Mode", action: #selector(toggleTestMode), keyEquivalent: "t")
+        testModeMenuItem?.keyEquivalentModifierMask = [.command, .shift]
         menu.addItem(testModeMenuItem!)
         
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Reload Keymap", action: #selector(reloadKeymap), keyEquivalent: "r"))
+        
+        // Reload
+        let reloadItem = NSMenuItem(title: "Reload Keymap", action: #selector(reloadKeymap), keyEquivalent: "r")
+        reloadItem.keyEquivalentModifierMask = [.command, .shift]
+        menu.addItem(reloadItem)
+        
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
+        
+        // Settings
+        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
+        menu.addItem(settingsItem)
+        
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
+        
+        // Quit
+        let quitItem = NSMenuItem(title: "Quit ZMK HUD", action: #selector(quit), keyEquivalent: "q")
+        menu.addItem(quitItem)
         
         statusItem.menu = menu
+        
+        // Observe connection state
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(connectionStateChanged),
+            name: NSNotification.Name("HIDConnectionChanged"),
+            object: nil
+        )
+    }
+    
+    private func updateMenuBarIcon() {
+        guard let button = statusItem.button else { return }
+        
+        let symbolName: String
+        let accessibilityDescription: String
+        
+        if appState.testModeEnabled {
+            symbolName = "keyboard.badge.ellipsis"
+            accessibilityDescription = "ZMK HUD (Test Mode)"
+        } else if appState.isConnected {
+            symbolName = "keyboard.fill"
+            accessibilityDescription = "ZMK HUD (Connected)"
+        } else {
+            symbolName = "keyboard"
+            accessibilityDescription = "ZMK HUD (Disconnected)"
+        }
+        
+        button.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: accessibilityDescription)
+    }
+    
+    @objc func connectionStateChanged() {
+        DispatchQueue.main.async { [weak self] in
+            self?.updateMenuBarIcon()
+        }
     }
     
     private func setupHIDManager() {
@@ -105,6 +158,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             keyboardSimulator = nil
             testModeMenuItem?.title = "Enable Test Mode"
         }
+        
+        updateMenuBarIcon()
     }
     
     @objc func reloadKeymap() {

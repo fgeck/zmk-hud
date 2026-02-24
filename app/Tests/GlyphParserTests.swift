@@ -128,7 +128,7 @@ final class GlyphParserTests: XCTestCase {
     // MARK: - Integration with Binding
     
     func testBindingParsedDisplayLabelWithGlyph() {
-        let binding = Binding(type: .custom("myIcon"), raw: "&myIcon")
+        let binding = KeyBinding(type: .custom("myIcon"), raw: "&myIcon")
         let customLabels = ["myIcon": "$$mdi:play$$"]
         
         let parsed = binding.parsedDisplayLabel(with: customLabels)
@@ -138,7 +138,7 @@ final class GlyphParserTests: XCTestCase {
     }
     
     func testBindingParsedDisplayLabelWithoutGlyph() {
-        let binding = Binding(type: .keyPress("SPACE"), raw: "&kp SPACE")
+        let binding = KeyBinding(type: .keyPress("SPACE"), raw: "&kp SPACE")
         
         let parsed = binding.parsedDisplayLabel()
         

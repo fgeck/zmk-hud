@@ -36,7 +36,7 @@ struct ScaledKeyPosition {
 }
 
 struct KeyView: View {
-    let binding: Binding
+    let binding: KeyBinding
     let position: ScaledKeyPosition
     let isPressed: Bool
     var customLabels: [String: String] = [:]
