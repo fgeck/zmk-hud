@@ -224,9 +224,10 @@ enum KeymapParser {
             let key = parts.count > 1 ? parts[1] : ""
             return Binding(type: .keyPress(formatKey(key)), raw: rawCode)
             
-        case "sk":  // Sticky key
+        case "sk":  // Sticky key - show as "Sticky ⌘" etc.
             let mod = parts.count > 1 ? parts[1] : ""
-            return Binding(type: .keyPress(formatModifier(mod)), raw: rawCode)
+            let modSymbol = formatModifier(mod)
+            return Binding(type: .keyPress("Sticky " + modSymbol), raw: rawCode)
             
         case "lt":
             guard parts.count >= 3, let layer = Int(parts[1]) else {
@@ -475,9 +476,13 @@ enum KeymapParser {
             "SPACE": "␣", "SPC": "␣",
             "TAB": "⇥",
             "RETURN": "⏎", "RET": "⏎", "ENTER": "⏎",
-            "ESCAPE": "ESC", "ESC": "ESC",
-            "DELETE": "DEL", "DEL": "DEL",
+            "ESCAPE": "Esc", "ESC": "Esc",
+            "DELETE": "Del", "DEL": "Del",
             "LEFT": "←", "RIGHT": "→", "UP": "↑", "DOWN": "↓",
+            "PG_UP": "PgUp", "PAGE_UP": "PgUp",
+            "PG_DN": "PgDn", "PAGE_DOWN": "PgDn",
+            "HOME": "Home", "END": "End",
+            "INS": "Ins", "INSERT": "Ins",
             
             // Punctuation
             "SEMICOLON": ";", "SEMI": ";",
@@ -489,7 +494,7 @@ enum KeymapParser {
             "RBKT": "]", "RIGHT_BRACKET": "]",
             "LBRC": "{", "RBRC": "}",
             "LPAR": "(", "RPAR": ")",
-            "SQT": "'", "SINGLE_QUOTE": "'",
+            "SQT": "'", "SINGLE_QUOTE": "'", "APOS": "'", "APOSTROPHE": "'",
             "DQT": "\"", "DOUBLE_QUOTES": "\"",
             "GRAVE": "`", "TILDE": "~",
             "EXCLAMATION": "!", "EXCL": "!",
@@ -502,25 +507,28 @@ enum KeymapParser {
             "STAR": "*", "ASTRK": "*",
             "UNDER": "_", "UNDERSCORE": "_",
             "PIPE": "|",
+            "QMARK": "?", "QUESTION": "?",
+            "LT": "<", "LESS_THAN": "<",
+            "GT": ">", "GREATER_THAN": ">",
             
             // Numbers
             "N0": "0", "N1": "1", "N2": "2", "N3": "3", "N4": "4",
             "N5": "5", "N6": "6", "N7": "7", "N8": "8", "N9": "9",
             
-            // Media controls
-            "C_VOL_UP": "🔊", "C_VOLUME_UP": "🔊",
-            "C_VOL_DN": "🔉", "C_VOLUME_DOWN": "🔉",
-            "C_MUTE": "🔇",
-            "C_NEXT": "⏭", "C_PREV": "⏮",
-            "C_PP": "⏯", "C_PLAY_PAUSE": "⏯",
-            "C_STOP": "⏹",
+            // Media controls - match keymap_drawer style
+            "C_VOL_UP": "Vol+", "C_VOLUME_UP": "Vol+",
+            "C_VOL_DN": "Vol-", "C_VOLUME_DOWN": "Vol-",
+            "C_MUTE": "Mute",
+            "C_NEXT": "Next", "C_PREV": "Prev",
+            "C_PP": "Play", "C_PLAY_PAUSE": "Play",
+            "C_STOP": "Stop",
             
             // Brightness
-            "C_BRI_UP": "☀️", "C_BRIGHTNESS_INC": "☀️",
-            "C_BRI_DN": "🌙", "C_BRIGHTNESS_DEC": "🌙",
+            "C_BRI_UP": "Bri+", "C_BRIGHTNESS_INC": "Bri+",
+            "C_BRI_DN": "Bri-", "C_BRIGHTNESS_DEC": "Bri-",
             
             // Power
-            "C_PWR": "⏻", "C_POWER": "⏻"
+            "C_PWR": "Pwr", "C_POWER": "Pwr"
         ]
         
         let upperKey = key.uppercased()
