@@ -275,6 +275,29 @@ struct AppearanceSettingsView: View {
         )
     }
     
+    private var comboDisplayBinding: Binding<AppState.ComboDisplayMode> {
+        Binding(
+            get: { appState.comboDisplayMode },
+            set: {
+                appState.comboDisplayMode = $0
+                appState.saveConfig()
+            }
+        )
+    }
+    
+    private var comboDisplayDescription: String {
+        switch appState.comboDisplayMode {
+        case .both:
+            return "Show combo boxes on keyboard and combo lists in side panels"
+        case .dendrons:
+            return "Show combo boxes directly on keyboard with connecting lines"
+        case .panels:
+            return "Show combos as lists in left/right side panels"
+        case .none:
+            return "Hide all combo displays"
+        }
+    }
+    
     var body: some View {
         Form {
             Section {
@@ -301,6 +324,25 @@ struct AppearanceSettingsView: View {
                 Slider(value: scaleBinding, in: 0.5...1.5)
             } header: {
                 Label("HUD Window", systemImage: "rectangle.on.rectangle")
+            }
+            
+            Section {
+                Picker(selection: comboDisplayBinding, label: HStack {
+                    Image(systemName: appState.comboDisplayMode.icon)
+                        .foregroundColor(.secondary)
+                    Text("Combo Display")
+                }) {
+                    ForEach(AppState.ComboDisplayMode.allCases, id: \.self) { mode in
+                        Label(mode.label, systemImage: mode.icon)
+                            .tag(mode)
+                    }
+                }
+                
+                Text(comboDisplayDescription)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } header: {
+                Label("Combos", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
             }
             
             Section {

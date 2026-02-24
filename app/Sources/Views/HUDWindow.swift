@@ -82,7 +82,10 @@ struct HUDContentView: View {
             
             // Main content
             HStack(spacing: 16) {
-                LeftComboPanel()
+                // Left combo panel (conditional)
+                if appState.comboDisplayMode.showPanels {
+                    LeftComboPanel()
+                }
                 
                 if let layout = appState.physicalLayout {
                     ZStack {
@@ -94,8 +97,10 @@ struct HUDContentView: View {
                             currentLayer: appState.currentLayer
                         )
                         
-                        // Combo overlay
-                        if let keymap = appState.keymap, !keymap.combos.isEmpty {
+                        // Combo overlay (conditional)
+                        if appState.comboDisplayMode.showDendrons,
+                           let keymap = appState.keymap,
+                           !keymap.combos.isEmpty {
                             ComboOverlayView(
                                 layout: layout,
                                 combos: keymap.combos,
@@ -120,7 +125,10 @@ struct HUDContentView: View {
                     .frame(width: 400, height: 200)
                 }
                 
-                RightComboPanel()
+                // Right combo panel (conditional)
+                if appState.comboDisplayMode.showPanels {
+                    RightComboPanel()
+                }
             }
             .padding(16)
         }

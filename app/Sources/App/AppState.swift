@@ -28,6 +28,42 @@ class AppState: ObservableObject {
     @Published var keymapDrawerConfigPath: String?
     @Published var isConnected: Bool = false
     
+    // Combo display settings
+    @Published var comboDisplayMode: ComboDisplayMode = .both
+    
+    enum ComboDisplayMode: String, CaseIterable, Codable {
+        case both = "both"           // Show dendrons on keyboard + side panels
+        case dendrons = "dendrons"   // Only show dendrons on keyboard
+        case panels = "panels"       // Only show side panels
+        case none = "none"           // Hide all combo displays
+        
+        var label: String {
+            switch self {
+            case .both: return "Both (Dendrons + Panels)"
+            case .dendrons: return "Dendrons Only"
+            case .panels: return "Side Panels Only"
+            case .none: return "Hidden"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .both: return "rectangle.split.3x1"
+            case .dendrons: return "point.topleft.down.to.point.bottomright.curvepath"
+            case .panels: return "sidebar.squares.left"
+            case .none: return "eye.slash"
+            }
+        }
+        
+        var showDendrons: Bool {
+            self == .both || self == .dendrons
+        }
+        
+        var showPanels: Bool {
+            self == .both || self == .panels
+        }
+    }
+    
     private let configManager: ConfigManager
     
     struct ModifierFlags: OptionSet {
@@ -71,6 +107,7 @@ class AppState: ObservableObject {
         hudScale = config.hudScale
         customLabels = config.customLabels
         tapDanceShifted = config.tapDanceShifted
+        comboDisplayMode = ComboDisplayMode(rawValue: config.comboDisplayMode) ?? .both
         
         // Load keymap_drawer config first (it may override custom labels)
         if let path = config.keymapDrawerConfigPath, !path.isEmpty {
@@ -108,7 +145,8 @@ class AppState: ObservableObject {
             tapDanceShifted: tapDanceShifted,
             hudPosition: hudPosition,
             hudOpacity: hudOpacity,
-            hudScale: hudScale
+            hudScale: hudScale,
+            comboDisplayMode: comboDisplayMode.rawValue
         )
         try? configManager.save(config)
     }

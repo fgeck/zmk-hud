@@ -10,6 +10,7 @@ struct HUDConfig: Codable {
     var hudPosition: String
     var hudOpacity: Double
     var hudScale: Double
+    var comboDisplayMode: String  // "both", "dendrons", "panels", "none"
     
     init(
         keymapPath: String? = nil,
@@ -20,7 +21,8 @@ struct HUDConfig: Codable {
         tapDanceShifted: [String: String] = [:],
         hudPosition: String = "topRight",
         hudOpacity: Double = 0.95,
-        hudScale: Double = 1.0
+        hudScale: Double = 1.0,
+        comboDisplayMode: String = "both"
     ) {
         self.keymapPath = keymapPath
         self.layoutPath = layoutPath
@@ -31,6 +33,7 @@ struct HUDConfig: Codable {
         self.hudPosition = hudPosition
         self.hudOpacity = hudOpacity
         self.hudScale = hudScale
+        self.comboDisplayMode = comboDisplayMode
     }
 }
 
@@ -127,6 +130,8 @@ class ConfigManager {
                 config.hudOpacity = Double(value) ?? 0.95
             case "hud_scale":
                 config.hudScale = Double(value) ?? 1.0
+            case "combo_display_mode":
+                config.comboDisplayMode = value.isEmpty ? "both" : value
             default:
                 break
             }
@@ -149,6 +154,9 @@ class ConfigManager {
         lines.append("hud_position: \(config.hudPosition)")
         lines.append("hud_opacity: \(config.hudOpacity)")
         lines.append("hud_scale: \(config.hudScale)")
+        lines.append("")
+        lines.append("# Combo Display: both, dendrons, panels, none")
+        lines.append("combo_display_mode: \(config.comboDisplayMode)")
         lines.append("")
         lines.append("# Custom key label mappings (tap label)")
         lines.append("# Map behavior names to display labels")
