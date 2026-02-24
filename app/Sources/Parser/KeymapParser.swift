@@ -253,6 +253,54 @@ enum KeymapParser {
         case "none":
             return Binding(type: .none, raw: rawCode)
             
+        // Caps Word behavior
+        case "caps_word":
+            return Binding(type: .capsWord, raw: rawCode)
+            
+        // Key Repeat behavior
+        case "key_repeat":
+            return Binding(type: .keyRepeat, raw: rawCode)
+            
+        // Sticky layer
+        case "sl":
+            guard parts.count >= 2, let layer = Int(parts[1]) else {
+                return Binding(type: .custom(rawCode), raw: rawCode)
+            }
+            return Binding(type: .stickyLayer(layer), raw: rawCode)
+            
+        // Toggle layer
+        case "tog":
+            guard parts.count >= 2, let layer = Int(parts[1]) else {
+                return Binding(type: .custom(rawCode), raw: rawCode)
+            }
+            return Binding(type: .toggleLayer(layer), raw: rawCode)
+            
+        // To layer (switch to layer)
+        case "to":
+            guard parts.count >= 2, let layer = Int(parts[1]) else {
+                return Binding(type: .custom(rawCode), raw: rawCode)
+            }
+            return Binding(type: .toLayer(layer), raw: rawCode)
+            
+        // Bootloader
+        case "bootloader":
+            return Binding(type: .bootloader, raw: rawCode)
+            
+        // Reset / sys_reset
+        case "sys_reset", "reset":
+            return Binding(type: .reset, raw: rawCode)
+            
+        // Bluetooth behaviors
+        case "bt":
+            // Join all parameters after 'bt' (e.g., "BT_SEL 0" -> "BT_SEL 0")
+            let action = parts.dropFirst().joined(separator: " ")
+            return Binding(type: .bluetooth(action), raw: rawCode)
+            
+        // Output selection (USB/BLE)
+        case "out":
+            let output = parts.count > 1 ? parts[1] : ""
+            return Binding(type: .outputSelect(output), raw: rawCode)
+
         default:
             // Tap-dance behaviors
             if behavior.hasPrefix("td_") || behavior.hasPrefix("TD_") {

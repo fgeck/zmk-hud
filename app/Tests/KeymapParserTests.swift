@@ -235,4 +235,198 @@ final class KeymapParserTests: XCTestCase {
         
         XCTAssertNil(keymap)
     }
+    
+    // MARK: - New Behavior Tests
+    
+    func testParsesCapsWordBehavior() throws {
+        let content = """
+        keymap {
+            compatible = "zmk,keymap";
+            base {
+                bindings = <&caps_word>;
+            };
+        };
+        """
+        
+        let keymap = KeymapParser.parse(from: content)
+        let binding = keymap?.layers.first?.bindings.first
+        
+        XCTAssertNotNil(binding)
+        if case .capsWord = binding?.type {
+            // Success
+        } else {
+            XCTFail("Expected capsWord binding type")
+        }
+        XCTAssertEqual(binding?.displayLabel, "CAPS")
+    }
+    
+    func testParsesKeyRepeatBehavior() throws {
+        let content = """
+        keymap {
+            compatible = "zmk,keymap";
+            base {
+                bindings = <&key_repeat>;
+            };
+        };
+        """
+        
+        let keymap = KeymapParser.parse(from: content)
+        let binding = keymap?.layers.first?.bindings.first
+        
+        XCTAssertNotNil(binding)
+        if case .keyRepeat = binding?.type {
+            // Success
+        } else {
+            XCTFail("Expected keyRepeat binding type")
+        }
+        XCTAssertEqual(binding?.displayLabel, "⟳")
+    }
+    
+    func testParsesStickyLayerBehavior() throws {
+        let content = """
+        keymap {
+            compatible = "zmk,keymap";
+            base {
+                bindings = <&sl 2>;
+            };
+        };
+        """
+        
+        let keymap = KeymapParser.parse(from: content)
+        let binding = keymap?.layers.first?.bindings.first
+        
+        XCTAssertNotNil(binding)
+        if case .stickyLayer(let layer) = binding?.type {
+            XCTAssertEqual(layer, 2)
+        } else {
+            XCTFail("Expected stickyLayer binding type")
+        }
+        XCTAssertEqual(binding?.displayLabel, "S2")
+    }
+    
+    func testParsesToggleLayerBehavior() throws {
+        let content = """
+        keymap {
+            compatible = "zmk,keymap";
+            base {
+                bindings = <&tog 1>;
+            };
+        };
+        """
+        
+        let keymap = KeymapParser.parse(from: content)
+        let binding = keymap?.layers.first?.bindings.first
+        
+        XCTAssertNotNil(binding)
+        if case .toggleLayer(let layer) = binding?.type {
+            XCTAssertEqual(layer, 1)
+        } else {
+            XCTFail("Expected toggleLayer binding type")
+        }
+        XCTAssertEqual(binding?.displayLabel, "T1")
+    }
+    
+    func testParsesToLayerBehavior() throws {
+        let content = """
+        keymap {
+            compatible = "zmk,keymap";
+            base {
+                bindings = <&to 3>;
+            };
+        };
+        """
+        
+        let keymap = KeymapParser.parse(from: content)
+        let binding = keymap?.layers.first?.bindings.first
+        
+        XCTAssertNotNil(binding)
+        if case .toLayer(let layer) = binding?.type {
+            XCTAssertEqual(layer, 3)
+        } else {
+            XCTFail("Expected toLayer binding type")
+        }
+        XCTAssertEqual(binding?.displayLabel, "→L3")
+    }
+    
+    func testParsesBootloaderBehavior() throws {
+        let content = """
+        keymap {
+            compatible = "zmk,keymap";
+            base {
+                bindings = <&bootloader>;
+            };
+        };
+        """
+        
+        let keymap = KeymapParser.parse(from: content)
+        let binding = keymap?.layers.first?.bindings.first
+        
+        XCTAssertNotNil(binding)
+        if case .bootloader = binding?.type {
+            // Success
+        } else {
+            XCTFail("Expected bootloader binding type")
+        }
+        XCTAssertEqual(binding?.displayLabel, "Boot")
+    }
+    
+    func testParsesResetBehavior() throws {
+        let content = """
+        keymap {
+            compatible = "zmk,keymap";
+            base {
+                bindings = <&sys_reset>;
+            };
+        };
+        """
+        
+        let keymap = KeymapParser.parse(from: content)
+        let binding = keymap?.layers.first?.bindings.first
+        
+        XCTAssertNotNil(binding)
+        if case .reset = binding?.type {
+            // Success
+        } else {
+            XCTFail("Expected reset binding type")
+        }
+        XCTAssertEqual(binding?.displayLabel, "Reset")
+    }
+    
+    func testParsesBluetoothBehaviors() throws {
+        let content = """
+        keymap {
+            compatible = "zmk,keymap";
+            base {
+                bindings = <&bt BT_CLR &bt BT_SEL 0 &bt BT_NXT>;
+            };
+        };
+        """
+        
+        let keymap = KeymapParser.parse(from: content)
+        let bindings = keymap?.layers.first?.bindings
+        
+        XCTAssertEqual(bindings?.count, 3)
+        XCTAssertEqual(bindings?[0].displayLabel, "BT✕")
+        XCTAssertEqual(bindings?[1].displayLabel, "BT1")
+        XCTAssertEqual(bindings?[2].displayLabel, "BT▶")
+    }
+    
+    func testParsesOutputSelectBehavior() throws {
+        let content = """
+        keymap {
+            compatible = "zmk,keymap";
+            base {
+                bindings = <&out OUT_USB &out OUT_BLE &out OUT_TOG>;
+            };
+        };
+        """
+        
+        let keymap = KeymapParser.parse(from: content)
+        let bindings = keymap?.layers.first?.bindings
+        
+        XCTAssertEqual(bindings?.count, 3)
+        XCTAssertEqual(bindings?[0].displayLabel, "USB")
+        XCTAssertEqual(bindings?[1].displayLabel, "BLE")
+        XCTAssertEqual(bindings?[2].displayLabel, "⇄")
+    }
 }

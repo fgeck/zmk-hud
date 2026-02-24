@@ -187,6 +187,27 @@ struct ComboRow: View {
             return "·"
         case .custom(let raw):
             return formatKeyName(raw)
+        // New behavior types
+        case .capsWord:
+            return "CAPS"
+        case .keyRepeat:
+            return "⟳"
+        case .stickyLayer(let layer):
+            return "S\(layer)"
+        case .toggleLayer(let layer):
+            return "T\(layer)"
+        case .toLayer(let layer):
+            return "→L\(layer)"
+        case .bootloader:
+            return "Boot"
+        case .reset:
+            return "Reset"
+        case .bluetooth(let action):
+            return formatBluetoothLabel(action)
+        case .outputSelect(let output):
+            return formatOutputLabel(output)
+        case .macro(let name):
+            return formatMacroLabel(name)
         }
     }
     
@@ -299,6 +320,41 @@ struct ComboRow: View {
         }
         
         return key.uppercased()
+    }
+    
+    private func formatBluetoothLabel(_ action: String) -> String {
+        if action.hasPrefix("BT_SEL") {
+            let parts = action.split(separator: " ")
+            if parts.count > 1, let index = Int(parts[1]) {
+                return "BT\(index + 1)"
+            }
+        }
+        let labels: [String: String] = [
+            "BT_CLR": "BT✕",
+            "BT_NXT": "BT▶",
+            "BT_PRV": "BT◀"
+        ]
+        return labels[action] ?? "BT"
+    }
+    
+    private func formatOutputLabel(_ output: String) -> String {
+        let labels: [String: String] = [
+            "OUT_USB": "USB",
+            "OUT_BLE": "BLE",
+            "OUT_TOG": "⇄"
+        ]
+        return labels[output] ?? output
+    }
+    
+    private func formatMacroLabel(_ name: String) -> String {
+        var clean = name
+            .replacingOccurrences(of: "macro_", with: "")
+            .replacingOccurrences(of: "MACRO_", with: "")
+            .replacingOccurrences(of: "m_", with: "")
+        if clean.count > 4 {
+            clean = String(clean.prefix(4))
+        }
+        return clean.uppercased()
     }
 }
 
