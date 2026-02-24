@@ -64,6 +64,8 @@ struct PhysicalLayout {
 class LayoutLoader {
     static let shared = LayoutLoader()
     
+    // MARK: - Primary: Load from JSON (preferred)
+    
     func loadFromJSON(_ jsonString: String, keyUnit: CGFloat = 56) -> PhysicalLayout? {
         guard let data = jsonString.data(using: .utf8) else { return nil }
         return parseLayoutJSON(data, keyUnit: keyUnit)
@@ -136,6 +138,31 @@ class LayoutLoader {
         }
         
         return PhysicalLayout(name: layoutName, positions: positions, keyUnit: keyUnit)
+    }
+    
+    // MARK: - Fallback: Create from keymap row structure (when no JSON provided)
+    
+    func createFallbackFromRowStructure(_ rowStructure: [Int], keyUnit: CGFloat = 56) -> PhysicalLayout {
+        var positions: [KeyPosition] = []
+        var index = 0
+        
+        for (row, columnsInRow) in rowStructure.enumerated() {
+            for col in 0..<columnsInRow {
+                positions.append(KeyPosition(
+                    index: index,
+                    x: CGFloat(col),
+                    y: CGFloat(row)
+                ))
+                index += 1
+            }
+        }
+        
+        let totalKeys = rowStructure.reduce(0, +)
+        return PhysicalLayout(
+            name: "Fallback (\(totalKeys) keys)",
+            positions: positions,
+            keyUnit: keyUnit
+        )
     }
     
     func createFallbackGrid(keyCount: Int, keyUnit: CGFloat = 56) -> PhysicalLayout {

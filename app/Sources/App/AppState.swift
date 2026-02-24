@@ -132,11 +132,13 @@ class AppState: ObservableObject {
     }
     
     private func createFallbackLayoutIfNeeded() {
-        guard physicalLayout == nil,
-              let keymap = keymap,
-              let firstLayer = keymap.layers.first else { return }
+        guard physicalLayout == nil, let keymap = keymap else { return }
         
-        let bindingCount = firstLayer.bindings.count
-        physicalLayout = LayoutLoader.shared.createFallbackGrid(keyCount: bindingCount)
+        if let rowStructure = keymap.rowStructure, !rowStructure.isEmpty {
+            physicalLayout = LayoutLoader.shared.createFallbackFromRowStructure(rowStructure)
+        } else if let firstLayer = keymap.layers.first {
+            physicalLayout = LayoutLoader.shared.createFallbackGrid(keyCount: firstLayer.bindings.count)
+        }
     }
+
 }

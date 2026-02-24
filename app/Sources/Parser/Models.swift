@@ -4,6 +4,7 @@ struct Keymap {
     var layers: [Layer]
     var combos: [Combo]
     var behaviors: [String: Behavior]
+    var rowStructure: [Int]?
 }
 
 struct Layer {

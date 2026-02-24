@@ -17,13 +17,13 @@ enum KeymapParser {
             }
         }
         
-        let layers = parseLayers(from: keymapContent)
+        let (layers, rowStructure) = parseLayers(from: keymapContent)
         let combos = parseCombos(from: cleanedContent)
         let behaviors = parseBehaviors(from: cleanedContent)
         
         guard !layers.isEmpty else { return nil }
         
-        return Keymap(layers: layers, combos: combos, behaviors: behaviors)
+        return Keymap(layers: layers, combos: combos, behaviors: behaviors, rowStructure: rowStructure)
     }
     
     private static func removeComments(from data: String) -> String {
@@ -94,12 +94,13 @@ enum KeymapParser {
         return String(data[keymapStart.lowerBound..<endIndex])
     }
     
-    private static func parseLayers(from keymapContent: String) -> [Layer] {
+    private static func parseLayers(from keymapContent: String) -> ([Layer], [Int]?) {
         var layers: [Layer] = []
+        var rowStructure: [Int]? = nil
         
         let layerPattern = "(\\w+)\\s*\\{([^}]*?)bindings\\s*=\\s*<(.*?)>\\s*;"
         guard let regex = try? NSRegularExpression(pattern: layerPattern, options: [.dotMatchesLineSeparators]) else {
-            return layers
+            return (layers, nil)
         }
         
         let nsContent = keymapContent as NSString
@@ -121,9 +122,48 @@ enum KeymapParser {
             
             let bindings = parseBindings(from: bindingsRaw)
             layers.append(Layer(name: layerName, bindings: bindings))
+            
+            if rowStructure == nil {
+                rowStructure = extractRowStructure(from: bindingsRaw)
+            }
         }
         
-        return layers
+        return (layers, rowStructure)
+    }
+    
+    private static func extractRowStructure(from bindingsRaw: String) -> [Int]? {
+        let lines = bindingsRaw.components(separatedBy: "\n")
+        var rowCounts: [Int] = []
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty { continue }
+            
+            let bindingCount = countBindingsInLine(trimmed)
+            if bindingCount > 0 {
+                rowCounts.append(bindingCount)
+            }
+        }
+        
+        if rowCounts.isEmpty {
+            return nil
+        }
+        
+        return rowCounts
+    }
+    
+    private static func countBindingsInLine(_ line: String) -> Int {
+        var count = 0
+        var i = line.startIndex
+        
+        while i < line.endIndex {
+            if line[i] == "&" {
+                count += 1
+            }
+            i = line.index(after: i)
+        }
+        
+        return count
     }
     
     private static func parseBindings(from bindingsRaw: String) -> [Binding] {
