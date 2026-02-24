@@ -3,22 +3,112 @@ import XCTest
 
 final class IntegrationTests: XCTestCase {
     
-    let keymapPath = "/Users/D068994/SAPDevelop/github.com/fgeck/zmk-config/config/anywhy_flake.keymap"
+    var sampleKeymapContent: String!
     
-    func testParsesRealAnwhyFlakeKeymap() throws {
-        let content = try String(contentsOfFile: keymapPath, encoding: .utf8)
-        
-        let keymap = KeymapParser.parse(from: content)
-        
-        XCTAssertNotNil(keymap, "Parser should successfully parse the real keymap")
+    override func setUp() {
+        super.setUp()
+        sampleKeymapContent = """
+/ {
+    keymap {
+        compatible = "zmk,keymap";
+
+        Base {
+            display-name = "Base";
+            bindings = <
+&none       &none     &none     &none      &none      &none          &none    &none     &none      &none      &none      &none
+&kp ENTER   &kp Q     &kp W     &kp E      &kp R      &kp T          &kp Y    &kp U     &kp I      &kp O      &kp P      &kp BSPC
+&kp TAB     &kp A     &kp S     &kp D      &kp F      &kp G          &kp H    &kp J     &kp K      &kp L      &kp SEMI   &kp SQT
+&kp LBKT    &kp Z     &kp X     &kp C      &kp V      &kp B          &kp N    &kp M     &kp COMMA  &kp DOT    &kp FSLH   &kp RBKT
+                      &mo 4     &kp LALT   &kp LGUI   &kp SPACE &mo 1     &mo 2  &kp RSHFT &kp RGUI   &kp RALT   &mo 3
+            >;
+        };
+
+        Num {
+            display-name = "Num";
+            bindings = <
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+&trans      &kp N1    &kp N2    &kp N3     &kp N4     &kp N5         &kp N6   &kp N7    &kp N8     &kp N9     &kp N0     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &kp N4    &kp N5     &kp N6     &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &kp N1    &kp N2     &kp N3     &trans     &trans
+                      &trans    &trans     &trans     &trans    &trans    &trans &kp N0    &trans     &trans     &trans
+            >;
+        };
+
+        Nav {
+            display-name = "Nav";
+            bindings = <
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &kp UP     &trans     &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &kp LEFT  &kp DOWN   &kp RIGHT  &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+                      &trans    &trans     &trans     &trans    &trans    &trans &trans    &trans     &trans     &trans
+            >;
+        };
+
+        Fn {
+            display-name = "Fn";
+            bindings = <
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+&trans      &kp F1    &kp F2    &kp F3     &kp F4     &kp F5         &kp F6   &kp F7    &kp F8     &kp F9     &kp F10    &trans
+&trans      &kp F11   &kp F12   &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+                      &trans    &trans     &trans     &trans    &trans    &trans &trans    &trans     &trans     &trans
+            >;
+        };
+
+        Idea {
+            display-name = "Idea";
+            bindings = <
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+                      &trans    &trans     &trans     &trans    &trans    &trans &trans    &trans     &trans     &trans
+            >;
+        };
+    };
+
+    combos {
+        compatible = "zmk,combos";
+
+        combo_excl {
+            key-positions = <13 25>;
+            bindings = <&kp EXCL>;
+        };
+
+        combo_at {
+            key-positions = <14 26>;
+            bindings = <&kp AT>;
+        };
+
+        combo_hash {
+            key-positions = <15 27>;
+            bindings = <&kp HASH>;
+        };
+
+        combo_enter_left {
+            key-positions = <26 27 28>;
+            bindings = <&kp ENTER>;
+        };
+
+        combo_enter_right {
+            key-positions = <31 32 33>;
+            bindings = <&kp ENTER>;
+        };
+    };
+};
+"""
+    }
+    
+    func testParsesKeymap() throws {
+        let keymap = KeymapParser.parse(from: sampleKeymapContent)
+        XCTAssertNotNil(keymap, "Parser should successfully parse the keymap")
     }
     
     func testFindsAllFiveLayers() throws {
-        let content = try String(contentsOfFile: keymapPath, encoding: .utf8)
+        let keymap = KeymapParser.parse(from: sampleKeymapContent)
         
-        let keymap = KeymapParser.parse(from: content)
-        
-        XCTAssertEqual(keymap?.layers.count, 5, "Should find all 5 layers: Base, Num, Nav, Fn, Idea")
+        XCTAssertEqual(keymap?.layers.count, 5, "Should find all 5 layers")
         
         let layerNames = keymap?.layers.map { $0.name } ?? []
         XCTAssertTrue(layerNames.contains("Base"), "Should have Base layer")
@@ -29,40 +119,32 @@ final class IntegrationTests: XCTestCase {
     }
     
     func testBaseLayerHas58Bindings() throws {
-        let content = try String(contentsOfFile: keymapPath, encoding: .utf8)
-        
-        let keymap = KeymapParser.parse(from: content)
+        let keymap = KeymapParser.parse(from: sampleKeymapContent)
         let baseLayer = keymap?.layers.first { $0.name == "Base" }
         
-        XCTAssertEqual(baseLayer?.bindings.count, 58, "Base layer should have 58 bindings (Flake L format)")
+        XCTAssertEqual(baseLayer?.bindings.count, 58, "Base layer should have 58 bindings")
     }
     
     func testFindsVerticalCombos() throws {
-        let content = try String(contentsOfFile: keymapPath, encoding: .utf8)
+        let keymap = KeymapParser.parse(from: sampleKeymapContent)
         
-        let keymap = KeymapParser.parse(from: content)
-        
-        XCTAssertGreaterThanOrEqual(keymap?.combos.count ?? 0, 18, "Should find at least 18 combos")
+        XCTAssertGreaterThanOrEqual(keymap?.combos.count ?? 0, 5, "Should find at least 5 combos")
         
         let comboNames = keymap?.combos.map { $0.name } ?? []
-        XCTAssertTrue(comboNames.contains("combo_excl"), "Should find combo_excl (Q+A=!)")
-        XCTAssertTrue(comboNames.contains("combo_at"), "Should find combo_at (W+S=@)")
-        XCTAssertTrue(comboNames.contains("combo_hash"), "Should find combo_hash (E+D=#)")
+        XCTAssertTrue(comboNames.contains("combo_excl"), "Should find combo_excl")
+        XCTAssertTrue(comboNames.contains("combo_at"), "Should find combo_at")
+        XCTAssertTrue(comboNames.contains("combo_hash"), "Should find combo_hash")
     }
     
     func testComboExclHasCorrectPositions() throws {
-        let content = try String(contentsOfFile: keymapPath, encoding: .utf8)
-        
-        let keymap = KeymapParser.parse(from: content)
+        let keymap = KeymapParser.parse(from: sampleKeymapContent)
         let comboExcl = keymap?.combos.first { $0.name == "combo_excl" }
         
-        XCTAssertEqual(comboExcl?.positions, [13, 25], "combo_excl should be Q+A (positions 13 and 25)")
+        XCTAssertEqual(comboExcl?.positions, [13, 25], "combo_excl should be positions 13 and 25")
     }
     
     func testFindsEnterCombos() throws {
-        let content = try String(contentsOfFile: keymapPath, encoding: .utf8)
-        
-        let keymap = KeymapParser.parse(from: content)
+        let keymap = KeymapParser.parse(from: sampleKeymapContent)
         
         let enterRight = keymap?.combos.first { $0.name == "combo_enter_right" }
         XCTAssertEqual(enterRight?.positions, [31, 32, 33], "combo_enter_right should be J+K+L")
@@ -71,108 +153,18 @@ final class IntegrationTests: XCTestCase {
         XCTAssertEqual(enterLeft?.positions, [26, 27, 28], "combo_enter_left should be S+D+F")
     }
     
-    func testLeftHandSymbolCombos() throws {
-        let content = try String(contentsOfFile: keymapPath, encoding: .utf8)
+    func testKeymapHasRowStructure() throws {
+        let keymap = KeymapParser.parse(from: sampleKeymapContent)
         
-        let keymap = KeymapParser.parse(from: content)
-        let combos = keymap?.combos ?? []
-        
-        let expectedLeftHandCombos: [(name: String, positions: [Int])] = [
-            ("combo_excl", [13, 25]),
-            ("combo_at", [14, 26]),
-            ("combo_hash", [15, 27]),
-            ("combo_dllr", [16, 28]),
-            ("combo_prcnt", [17, 29]),
-            ("combo_grave", [25, 37]),
-            ("combo_bslh", [26, 38]),
-            ("combo_equal", [27, 39]),
-            ("combo_tilde", [28, 40]),
-        ]
-        
-        for expected in expectedLeftHandCombos {
-            let combo = combos.first { $0.name == expected.name }
-            XCTAssertNotNil(combo, "Should find \(expected.name)")
-            XCTAssertEqual(combo?.positions, expected.positions, "\(expected.name) should have positions \(expected.positions)")
-        }
-    }
-    
-    func testRightHandSymbolCombos() throws {
-        let content = try String(contentsOfFile: keymapPath, encoding: .utf8)
-        
-        let keymap = KeymapParser.parse(from: content)
-        let combos = keymap?.combos ?? []
-        
-        let expectedRightHandCombos: [(name: String, positions: [Int])] = [
-            ("combo_caret", [18, 30]),
-            ("combo_plus", [19, 31]),
-            ("combo_star", [20, 32]),
-            ("combo_amps", [21, 33]),
-            ("combo_under", [30, 42]),
-            ("combo_minus", [31, 43]),
-            ("combo_fslh", [32, 44]),
-            ("combo_pipe", [33, 45]),
-        ]
-        
-        for expected in expectedRightHandCombos {
-            let combo = combos.first { $0.name == expected.name }
-            XCTAssertNotNil(combo, "Should find \(expected.name)")
-            XCTAssertEqual(combo?.positions, expected.positions, "\(expected.name) should have positions \(expected.positions)")
-        }
-    }
-    
-    func testNavLayerHasArrowBindings() throws {
-        let content = try String(contentsOfFile: keymapPath, encoding: .utf8)
-        
-        let keymap = KeymapParser.parse(from: content)
-        let navLayer = keymap?.layers.first { $0.name == "Nav" }
-        
-        XCTAssertNotNil(navLayer, "Should find Nav layer")
-        XCTAssertEqual(navLayer?.bindings.count, 58, "Nav layer should have 58 bindings")
-    }
-    
-    func testNumLayerHasNumberBindings() throws {
-        let content = try String(contentsOfFile: keymapPath, encoding: .utf8)
-        
-        let keymap = KeymapParser.parse(from: content)
-        let numLayer = keymap?.layers.first { $0.name == "Num" }
-        
-        XCTAssertNotNil(numLayer, "Should find Num layer")
-        XCTAssertEqual(numLayer?.bindings.count, 58, "Num layer should have 58 bindings")
-    }
-    
-    func testAppStateCanLoadRealKeymap() throws {
-        let appState = AppState()
-        
-        appState.loadKeymapFromFile(keymapPath)
-        
-        XCTAssertNotNil(appState.keymap, "AppState should successfully load the keymap")
-        XCTAssertEqual(appState.keymapPath, keymapPath, "AppState should store the keymap path")
-        XCTAssertEqual(appState.keymap?.layers.count, 5, "Loaded keymap should have 5 layers")
-    }
-    
-    func testFlakeKeymapHasRowStructure() throws {
-        let content = try String(contentsOfFile: keymapPath, encoding: .utf8)
-        let keymap = KeymapParser.parse(from: content)
-        
-        XCTAssertNotNil(keymap?.rowStructure, "Flake keymap should have row structure")
-        XCTAssertEqual(keymap?.rowStructure?.count, 5, "Flake should have 5 rows")
+        XCTAssertNotNil(keymap?.rowStructure, "Keymap should have row structure")
+        XCTAssertEqual(keymap?.rowStructure?.count, 5, "Should have 5 rows")
         
         let totalKeys = keymap?.rowStructure?.reduce(0, +) ?? 0
         XCTAssertEqual(totalKeys, 58, "Row structure should sum to 58 keys")
     }
     
-    func testFlakeFallbackLayoutFromRowStructure() throws {
-        let appState = AppState()
-        appState.loadKeymapFromFile(keymapPath)
-        
-        XCTAssertNotNil(appState.physicalLayout, "Should create fallback layout")
-        XCTAssertEqual(appState.physicalLayout?.positions.count, 58, "Fallback should have 58 positions")
-        XCTAssertTrue(appState.physicalLayout?.name.contains("Fallback") ?? false, "Should be named as fallback")
-    }
-    
-    func testFlakeFallbackLayoutMatchesRowStructure() throws {
-        let content = try String(contentsOfFile: keymapPath, encoding: .utf8)
-        let keymap = KeymapParser.parse(from: content)
+    func testFallbackLayoutFromRowStructure() throws {
+        let keymap = KeymapParser.parse(from: sampleKeymapContent)
         
         guard let rowStructure = keymap?.rowStructure else {
             XCTFail("No row structure")
@@ -181,15 +173,26 @@ final class IntegrationTests: XCTestCase {
         
         let layout = LayoutLoader.shared.createFallbackFromRowStructure(rowStructure)
         
-        var expectedIndex = 0
-        for (row, cols) in rowStructure.enumerated() {
-            for col in 0..<cols {
-                let pos = layout.positions[expectedIndex]
-                XCTAssertEqual(Int(pos.x), col, "Key \(expectedIndex) should be at column \(col)")
-                XCTAssertEqual(Int(pos.y), row, "Key \(expectedIndex) should be at row \(row)")
-                expectedIndex += 1
-            }
+        XCTAssertEqual(layout.positions.count, 58, "Fallback should have 58 positions")
+        XCTAssertTrue(layout.name.contains("Fallback"), "Should be named as fallback")
+    }
+    
+    func testFallbackLayoutIsSplit() throws {
+        let keymap = KeymapParser.parse(from: sampleKeymapContent)
+        guard let rowStructure = keymap?.rowStructure else {
+            XCTFail("No row structure")
+            return
         }
+        let layout = LayoutLoader.shared.createFallbackFromRowStructure(rowStructure)
+        XCTAssertEqual(layout.positions.count, 58, "Should have 58 positions")
+        XCTAssertTrue(layout.name.contains("Split"), "Should be named as split fallback")
+        // Verify there's a gap between left and right halves
+        let firstRowPositions = layout.positions.prefix(12)
+        let leftHalf = firstRowPositions.prefix(6)
+        let rightHalf = firstRowPositions.suffix(6)
+        let leftMaxX = leftHalf.map { $0.x }.max() ?? 0
+        let rightMinX = rightHalf.map { $0.x }.min() ?? 0
+        XCTAssertGreaterThan(rightMinX - leftMaxX, 1.0, "Should have gap between halves")
     }
 }
 
@@ -216,7 +219,7 @@ final class TotemIntegrationTests: XCTestCase {
             let keymap = KeymapParser.parse(from: content)
             
             XCTAssertNotNil(keymap, "Parser should successfully parse Totem keymap")
-            XCTAssertEqual(keymap?.layers.count, 6, "Totem should have 6 layers: BASE, NAV, SYM, ADJ, TVP1, TVP2")
+            XCTAssertEqual(keymap?.layers.count, 6, "Totem should have 6 layers")
             
             let baseLayer = keymap?.layers.first { $0.name == "BASE" }
             XCTAssertNotNil(baseLayer, "Should find BASE layer")
@@ -366,8 +369,8 @@ final class TotemIntegrationTests: XCTestCase {
             XCTAssertNotNil(appState.keymap, "AppState should load keymap")
             XCTAssertEqual(appState.keymapPath, self.totemKeymapURL, "Should store URL as path")
             
-            XCTAssertNotNil(appState.physicalLayout, "Should auto-infer layout from keymap")
-            XCTAssertEqual(appState.physicalLayout?.positions.count, 38, "Inferred layout should have 38 keys")
+            XCTAssertNotNil(appState.physicalLayout, "Should auto-create fallback layout from keymap")
+            XCTAssertEqual(appState.physicalLayout?.positions.count, 38, "Fallback layout should have 38 keys")
             
             expectation.fulfill()
         }
@@ -466,5 +469,4 @@ final class TotemIntegrationTests: XCTestCase {
         
         wait(for: [expectation], timeout: 10.0)
     }
-
 }

@@ -145,9 +145,12 @@ class LayoutLoader {
     func createFallbackFromRowStructure(_ rowStructure: [Int], keyUnit: CGFloat = 56) -> PhysicalLayout {
         var positions: [KeyPosition] = []
         var index = 0
-        
+        let splitGap: CGFloat = 1.5
         for (row, columnsInRow) in rowStructure.enumerated() {
-            for col in 0..<columnsInRow {
+            let keysPerHalf = columnsInRow / 2
+            let hasOddKey = columnsInRow % 2 != 0
+            
+            for col in 0..<keysPerHalf {
                 positions.append(KeyPosition(
                     index: index,
                     x: CGFloat(col),
@@ -155,11 +158,28 @@ class LayoutLoader {
                 ))
                 index += 1
             }
+            
+            for col in 0..<keysPerHalf {
+                positions.append(KeyPosition(
+                    index: index,
+                    x: CGFloat(keysPerHalf) + splitGap + CGFloat(col),
+                    y: CGFloat(row)
+                ))
+                index += 1
+            }
+            
+            if hasOddKey {
+                positions.append(KeyPosition(
+                    index: index,
+                    x: CGFloat(columnsInRow) + splitGap,
+                    y: CGFloat(row)
+                ))
+                index += 1
+            }
         }
-        
         let totalKeys = rowStructure.reduce(0, +)
         return PhysicalLayout(
-            name: "Fallback (\(totalKeys) keys)",
+            name: "Split Fallback (\(totalKeys) keys)",
             positions: positions,
             keyUnit: keyUnit
         )

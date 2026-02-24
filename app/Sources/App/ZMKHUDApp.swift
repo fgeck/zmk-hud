@@ -24,8 +24,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMenuBar()
         setupHIDManager()
-        loadDefaultKeymap()
-        
         NSApp.setActivationPolicy(.accessory)
     }
     
@@ -59,12 +57,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         hidManager?.startMonitoring()
     }
     
-    private func loadDefaultKeymap() {
-        let defaultPath = NSHomeDirectory() + "/SAPDevelop/github.com/fgeck/zmk-config/config/anywhy_flake.keymap"
-        if FileManager.default.fileExists(atPath: defaultPath) {
-            appState.loadKeymapFromFile(defaultPath)
-        }
-    }
     
     @objc func showHUD() {
         if hudWindow == nil {
