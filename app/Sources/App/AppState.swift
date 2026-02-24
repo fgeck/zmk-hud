@@ -8,6 +8,7 @@ class AppState: ObservableObject {
     @Published var hudVisible: Bool = false
     @Published var keymap: Keymap?
     @Published var keymapPath: String?
+    @Published var testModeEnabled: Bool = false
     
     struct ModifierFlags: OptionSet {
         let rawValue: UInt8

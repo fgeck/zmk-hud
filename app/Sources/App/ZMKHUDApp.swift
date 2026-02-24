@@ -18,10 +18,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var appState = AppState()
     var hudWindow: HUDWindow?
     var hidManager: HIDManager?
+    var keyboardSimulator: KeyboardSimulator?
+    var testModeMenuItem: NSMenuItem?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMenuBar()
         setupHIDManager()
+        loadDefaultKeymap()
         
         NSApp.setActivationPolicy(.accessory)
     }
@@ -37,6 +40,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: "Show HUD", action: #selector(showHUD), keyEquivalent: "h"))
         menu.addItem(NSMenuItem(title: "Hide HUD", action: #selector(hideHUD), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
+        
+        testModeMenuItem = NSMenuItem(title: "Enable Test Mode", action: #selector(toggleTestMode), keyEquivalent: "t")
+        menu.addItem(testModeMenuItem!)
+        
+        menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Reload Keymap", action: #selector(reloadKeymap), keyEquivalent: "r"))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
@@ -49,6 +57,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupHIDManager() {
         hidManager = HIDManager(appState: appState)
         hidManager?.startMonitoring()
+    }
+    
+    private func loadDefaultKeymap() {
+        let defaultPath = NSHomeDirectory() + "/SAPDevelop/github.com/fgeck/zmk-config/config/anywhy_flake.keymap"
+        if FileManager.default.fileExists(atPath: defaultPath) {
+            appState.loadKeymapFromFile(defaultPath)
+        }
     }
     
     @objc func showHUD() {
@@ -64,6 +79,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         appState.hudVisible = false
     }
     
+    @objc func toggleTestMode() {
+        appState.testModeEnabled.toggle()
+        
+        if appState.testModeEnabled {
+            keyboardSimulator = KeyboardSimulator(appState: appState)
+            keyboardSimulator?.startMonitoring()
+            testModeMenuItem?.title = "Disable Test Mode"
+            showHUD()
+        } else {
+            keyboardSimulator?.stopMonitoring()
+            keyboardSimulator = nil
+            testModeMenuItem?.title = "Enable Test Mode"
+        }
+    }
+    
     @objc func reloadKeymap() {
         appState.reloadKeymap()
     }
@@ -74,6 +104,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc func quit() {
+        keyboardSimulator?.stopMonitoring()
         NSApp.terminate(nil)
     }
 }
