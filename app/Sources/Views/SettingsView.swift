@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject var appState: AppState
@@ -6,11 +7,12 @@ struct SettingsView: View {
     @AppStorage("comboPanelSide") private var comboPanelSide: ComboPanelSide = .right
     @AppStorage("hudOpacity") private var hudOpacity: Double = 0.95
     @AppStorage("hudScale") private var hudScale: Double = 1.0
-    @State private var githubURL: String = ""
+    @State private var keymapURL: String = ""
+    @State private var layoutURL: String = ""
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            GroupBox("Keymap") {
+            GroupBox("Keymap (.keymap file)") {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Text(appState.keymapPath ?? "No keymap loaded")
@@ -23,13 +25,48 @@ struct SettingsView: View {
                         }
                     }
                     
-                    TextField("GitHub URL", text: $githubURL)
-                        .textFieldStyle(.roundedBorder)
-                        .onChange(of: githubURL) { newValue in
-                            if newValue.hasPrefix("http") {
-                                appState.loadKeymapFromURL(newValue)
+                    HStack {
+                        TextField("Or enter URL...", text: $keymapURL)
+                            .textFieldStyle(.roundedBorder)
+                        Button("Load") {
+                            if keymapURL.hasPrefix("http") {
+                                appState.loadKeymapFromURL(keymapURL)
                             }
                         }
+                        .disabled(!keymapURL.hasPrefix("http"))
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            
+            GroupBox("Physical Layout (.json file)") {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text(appState.layoutPath ?? "Auto-inferred from keymap")
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Spacer()
+                        if appState.layoutPath != nil {
+                            Button("Clear") {
+                                appState.clearLayout()
+                            }
+                        }
+                        Button("Choose...") {
+                            chooseLayoutFile()
+                        }
+                    }
+                    
+                    HStack {
+                        TextField("Or enter URL...", text: $layoutURL)
+                            .textFieldStyle(.roundedBorder)
+                        Button("Load") {
+                            if layoutURL.hasPrefix("http") {
+                                appState.loadLayoutFromURL(layoutURL)
+                            }
+                        }
+                        .disabled(!layoutURL.hasPrefix("http"))
+                    }
                 }
                 .padding(.vertical, 4)
             }
@@ -68,18 +105,30 @@ struct SettingsView: View {
             Spacer()
         }
         .padding()
-        .frame(width: 400, height: 350)
+        .frame(width: 450, height: 480)
     }
     
     private func chooseKeymapFile() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.plainText]
+        panel.allowedContentTypes = [.plainText, UTType(filenameExtension: "keymap") ?? .plainText]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.title = "Choose Keymap File"
         
         if panel.runModal() == .OK, let url = panel.url {
             appState.loadKeymapFromFile(url.path)
+        }
+    }
+    
+    private func chooseLayoutFile() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.title = "Choose Physical Layout JSON"
+        
+        if panel.runModal() == .OK, let url = panel.url {
+            appState.loadLayoutFromFile(url.path)
         }
     }
 }

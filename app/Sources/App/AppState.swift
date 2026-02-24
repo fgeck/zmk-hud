@@ -8,6 +8,8 @@ class AppState: ObservableObject {
     @Published var hudVisible: Bool = false
     @Published var keymap: Keymap?
     @Published var keymapPath: String?
+    @Published var physicalLayout: PhysicalLayout?
+    @Published var layoutPath: String?
     @Published var testModeEnabled: Bool = false
     
     struct ModifierFlags: OptionSet {
@@ -70,6 +72,7 @@ class AppState: ObservableObject {
             let content = try String(contentsOfFile: path, encoding: .utf8)
             keymap = KeymapParser.parse(from: content)
             keymapPath = path
+            createFallbackLayoutIfNeeded()
         } catch {
             print("Failed to load keymap: \(error)")
         }
@@ -87,7 +90,53 @@ class AppState: ObservableObject {
             DispatchQueue.main.async {
                 self?.keymap = KeymapParser.parse(from: content)
                 self?.keymapPath = urlString
+                self?.createFallbackLayoutIfNeeded()
             }
         }.resume()
+    }
+    
+    func reloadLayout() {
+        guard let path = layoutPath else { return }
+        
+        if path.hasPrefix("http") {
+            loadLayoutFromURL(path)
+        } else {
+            loadLayoutFromFile(path)
+        }
+    }
+    
+    func loadLayoutFromFile(_ path: String) {
+        if let layout = LayoutLoader.shared.loadFromFile(path) {
+            physicalLayout = layout
+            layoutPath = path
+        } else {
+            print("Failed to load layout from: \(path)")
+        }
+    }
+    
+    func loadLayoutFromURL(_ urlString: String) {
+        LayoutLoader.shared.loadFromURL(urlString) { [weak self] layout in
+            if let layout = layout {
+                self?.physicalLayout = layout
+                self?.layoutPath = urlString
+            } else {
+                print("Failed to fetch layout from: \(urlString)")
+            }
+        }
+    }
+    
+    func clearLayout() {
+        physicalLayout = nil
+        layoutPath = nil
+        createFallbackLayoutIfNeeded()
+    }
+    
+    private func createFallbackLayoutIfNeeded() {
+        guard physicalLayout == nil,
+              let keymap = keymap,
+              let firstLayer = keymap.layers.first else { return }
+        
+        let bindingCount = firstLayer.bindings.count
+        physicalLayout = LayoutLoader.shared.createFallbackGrid(keyCount: bindingCount)
     }
 }

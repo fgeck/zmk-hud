@@ -24,19 +24,33 @@ struct KeyboardView: View {
             }
             .padding(.horizontal, 4)
             
-            ZStack {
-                ForEach(currentBindings.indices, id: \.self) { index in
-                    if let position = KeyboardLayout.position(for: bindingIndex(for: index)) {
-                        KeyView(
-                            binding: currentBindings[index],
-                            position: position,
-                            isPressed: appState.pressedKeys.contains(position.index)
-                        )
-                        .position(x: position.x + position.width / 2, y: position.y + position.height / 2)
+            if let layout = appState.physicalLayout {
+                ZStack {
+                    ForEach(currentBindings.indices, id: \.self) { index in
+                        if let scaled = layout.scaledPosition(for: index) {
+                            KeyView(
+                                binding: currentBindings[index],
+                                position: ScaledKeyPosition(
+                                    index: index,
+                                    x: scaled.x,
+                                    y: scaled.y,
+                                    width: scaled.width,
+                                    height: scaled.height,
+                                    rotation: scaled.rotation
+                                ),
+                                isPressed: appState.pressedKeys.contains(index)
+                            )
+                            .position(x: scaled.x + scaled.width / 2, y: scaled.y + scaled.height / 2)
+                            .rotationEffect(.degrees(scaled.rotation))
+                        }
                     }
                 }
+                .frame(width: layout.layoutSize.width, height: layout.layoutSize.height)
+            } else {
+                Text("No layout loaded")
+                    .foregroundColor(.secondary)
+                    .frame(width: 300, height: 150)
             }
-            .frame(width: KeyboardLayout.layoutSize.width, height: KeyboardLayout.layoutSize.height)
         }
         .padding()
     }
@@ -56,9 +70,6 @@ struct KeyboardView: View {
         }
         return keymap.layers[appState.currentLayer].bindings
     }
-    
-    private func bindingIndex(for arrayIndex: Int) -> Int {
-        let flakeLOffset = 12
-        return flakeLOffset + arrayIndex
-    }
 }
+
+

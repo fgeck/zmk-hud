@@ -26,9 +26,18 @@ struct KeyColors {
     static let strokeDark = Color(hex: "#60666c")
 }
 
+struct ScaledKeyPosition {
+    let index: Int
+    let x: CGFloat
+    let y: CGFloat
+    let width: CGFloat
+    let height: CGFloat
+    let rotation: CGFloat
+}
+
 struct KeyView: View {
     let binding: Binding
-    let position: KeyPosition
+    let position: ScaledKeyPosition
     let isPressed: Bool
     
     @Environment(\.colorScheme) var colorScheme
@@ -58,7 +67,6 @@ struct KeyView: View {
             .padding(4)
         }
         .frame(width: position.width, height: position.height)
-        .rotationEffect(.degrees(position.rotation))
     }
     
     private var backgroundColor: Color {

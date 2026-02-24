@@ -150,3 +150,217 @@ final class IntegrationTests: XCTestCase {
         XCTAssertEqual(appState.keymap?.layers.count, 5, "Loaded keymap should have 5 layers")
     }
 }
+
+final class TotemIntegrationTests: XCTestCase {
+    
+    let totemKeymapURL = "https://raw.githubusercontent.com/GEIGEIGEIST/zmk-config-totem/master/config/totem.keymap"
+    
+    func testParsesTotemKeymapFromURL() throws {
+        let expectation = XCTestExpectation(description: "Fetch and parse Totem keymap")
+        
+        guard let url = URL(string: totemKeymapURL) else {
+            XCTFail("Invalid URL")
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            defer { expectation.fulfill() }
+            
+            guard let data = data, let content = String(data: data, encoding: .utf8) else {
+                XCTFail("Failed to fetch Totem keymap: \(error?.localizedDescription ?? "unknown")")
+                return
+            }
+            
+            let keymap = KeymapParser.parse(from: content)
+            
+            XCTAssertNotNil(keymap, "Parser should successfully parse Totem keymap")
+            XCTAssertEqual(keymap?.layers.count, 6, "Totem should have 6 layers: BASE, NAV, SYM, ADJ, TVP1, TVP2")
+            
+            let baseLayer = keymap?.layers.first { $0.name == "BASE" }
+            XCTAssertNotNil(baseLayer, "Should find BASE layer")
+            XCTAssertEqual(baseLayer?.bindings.count, 38, "Totem BASE layer should have 38 bindings")
+        }.resume()
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testTotemLayerNames() throws {
+        let expectation = XCTestExpectation(description: "Verify Totem layer names")
+        
+        guard let url = URL(string: totemKeymapURL) else {
+            XCTFail("Invalid URL")
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            defer { expectation.fulfill() }
+            
+            guard let data = data, let content = String(data: data, encoding: .utf8) else {
+                XCTFail("Failed to fetch")
+                return
+            }
+            
+            let keymap = KeymapParser.parse(from: content)
+            let layerNames = keymap?.layers.map { $0.name } ?? []
+            
+            XCTAssertTrue(layerNames.contains("BASE"), "Should have BASE layer")
+            XCTAssertTrue(layerNames.contains("NAVI") || layerNames.contains("NAV"), "Should have NAV/NAVI layer")
+            XCTAssertTrue(layerNames.contains("SYM"), "Should have SYM layer")
+            XCTAssertTrue(layerNames.contains("ADJ"), "Should have ADJ layer")
+        }.resume()
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testTotemHasCombos() throws {
+        let expectation = XCTestExpectation(description: "Verify Totem combos")
+        
+        guard let url = URL(string: totemKeymapURL) else {
+            XCTFail("Invalid URL")
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            defer { expectation.fulfill() }
+            
+            guard let data = data, let content = String(data: data, encoding: .utf8) else {
+                XCTFail("Failed to fetch")
+                return
+            }
+            
+            let keymap = KeymapParser.parse(from: content)
+            
+            XCTAssertGreaterThan(keymap?.combos.count ?? 0, 0, "Totem should have combos defined")
+            
+            let escCombo = keymap?.combos.first { $0.name == "combo_esc" }
+            XCTAssertNotNil(escCombo, "Should find combo_esc")
+            XCTAssertEqual(escCombo?.positions, [0, 1], "combo_esc should be positions 0 and 1")
+        }.resume()
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testFallbackGridCreatesCorrectKeyCount() throws {
+        let layout = LayoutLoader.shared.createFallbackGrid(keyCount: 38)
+        
+        XCTAssertEqual(layout.positions.count, 38, "Fallback grid should have 38 positions")
+        XCTAssertFalse(layout.name.isEmpty, "Layout should have a name")
+        XCTAssertGreaterThan(layout.layoutSize.width, 0, "Layout should have positive width")
+        XCTAssertGreaterThan(layout.layoutSize.height, 0, "Layout should have positive height")
+    }
+    
+    func testTotemPhysicalLayoutFromJSON() throws {
+        let totemLayoutJSON = """
+        {
+            "layouts": {
+                "LAYOUT": {
+                    "layout": [
+                        {"x": 0, "y": 0.93},
+                        {"x": 1, "y": 0.31},
+                        {"x": 2, "y": 0},
+                        {"x": 3, "y": 0.28},
+                        {"x": 4, "y": 0.42},
+                        
+                        {"x": 7, "y": 0.42},
+                        {"x": 8, "y": 0.28},
+                        {"x": 9, "y": 0},
+                        {"x": 10, "y": 0.31},
+                        {"x": 11, "y": 0.93},
+                        
+                        {"x": 0, "y": 1.93},
+                        {"x": 1, "y": 1.31},
+                        {"x": 2, "y": 1},
+                        {"x": 3, "y": 1.28},
+                        {"x": 4, "y": 1.42},
+                        
+                        {"x": 7, "y": 1.42},
+                        {"x": 8, "y": 1.28},
+                        {"x": 9, "y": 1},
+                        {"x": 10, "y": 1.31},
+                        {"x": 11, "y": 1.93},
+                        
+                        {"x": 0, "y": 2.93},
+                        {"x": 1, "y": 2.31},
+                        {"x": 2, "y": 2},
+                        {"x": 3, "y": 2.28},
+                        {"x": 4, "y": 2.42},
+                        
+                        {"x": 7, "y": 2.42},
+                        {"x": 8, "y": 2.28},
+                        {"x": 9, "y": 2},
+                        {"x": 10, "y": 2.31},
+                        {"x": 11, "y": 2.93},
+                        
+                        {"x": 2.5, "y": 3.2},
+                        {"x": 3.5, "y": 3.5},
+                        {"x": 4.5, "y": 3.8},
+                        
+                        {"x": 6.5, "y": 3.8},
+                        {"x": 7.5, "y": 3.5},
+                        {"x": 8.5, "y": 3.2},
+                        
+                        {"x": -0.3, "y": 2.4},
+                        {"x": 11.3, "y": 2.4}
+                    ]
+                }
+            }
+        }
+        """
+        
+        let layout = LayoutLoader.shared.loadFromJSON(totemLayoutJSON)
+        
+        XCTAssertNotNil(layout, "Should parse Totem layout JSON")
+        XCTAssertEqual(layout?.positions.count, 38, "Totem should have 38 key positions")
+        XCTAssertGreaterThan(layout?.layoutSize.width ?? 0, 0, "Layout should have positive width")
+    }
+    
+    func testAppStateLoadsTotemKeymapFromURL() throws {
+        let expectation = XCTestExpectation(description: "AppState loads Totem keymap")
+        let appState = AppState()
+        
+        appState.loadKeymapFromURL(totemKeymapURL)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            XCTAssertNotNil(appState.keymap, "AppState should load keymap")
+            XCTAssertEqual(appState.keymapPath, self.totemKeymapURL, "Should store URL as path")
+            
+            XCTAssertNotNil(appState.physicalLayout, "Should auto-infer layout from keymap")
+            XCTAssertEqual(appState.physicalLayout?.positions.count, 38, "Inferred layout should have 38 keys")
+            
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testTotemBaseLayerHasHomeRowMods() throws {
+        let expectation = XCTestExpectation(description: "Verify Totem home row mods")
+        
+        guard let url = URL(string: totemKeymapURL) else {
+            XCTFail("Invalid URL")
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            defer { expectation.fulfill() }
+            
+            guard let data = data, let content = String(data: data, encoding: .utf8) else {
+                XCTFail("Failed to fetch")
+                return
+            }
+            
+            let keymap = KeymapParser.parse(from: content)
+            let baseLayer = keymap?.layers.first { $0.name == "BASE" }
+            
+            let homeRowModBindings = baseLayer?.bindings.filter { binding in
+                if case .modTap = binding.type { return true }
+                if case .holdTap = binding.type { return true }
+                return false
+            } ?? []
+            
+            XCTAssertGreaterThan(homeRowModBindings.count, 0, "Totem should have home row mods (mt bindings)")
+        }.resume()
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+}
