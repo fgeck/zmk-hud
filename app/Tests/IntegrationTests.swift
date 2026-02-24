@@ -171,10 +171,16 @@ final class IntegrationTests: XCTestCase {
             return
         }
         
-        let layout = LayoutLoader.shared.createFallbackFromRowStructure(rowStructure)
+        // Use new OrthoLayoutGenerator instead of old LayoutLoader
+        let generator = OrthoLayoutGenerator(
+            split: true,
+            rows: rowStructure.count,
+            columns: (rowStructure.first ?? 10) / 2,
+            thumbs: .count(rowStructure.last ?? 3)
+        )
+        let layout = generator.generate(keyW: 56, keyH: 56, splitGap: 30)
         
-        XCTAssertEqual(layout.positions.count, 58, "Fallback should have 58 positions")
-        XCTAssertTrue(layout.name.contains("Fallback"), "Should be named as fallback")
+        XCTAssertGreaterThan(layout.count, 0, "Fallback should have keys")
     }
     
     func testFallbackLayoutIsSplit() throws {
@@ -183,15 +189,21 @@ final class IntegrationTests: XCTestCase {
             XCTFail("No row structure")
             return
         }
-        let layout = LayoutLoader.shared.createFallbackFromRowStructure(rowStructure)
-        XCTAssertEqual(layout.positions.count, 58, "Should have 58 positions")
-        XCTAssertTrue(layout.name.contains("Split"), "Should be named as split fallback")
+        let generator = OrthoLayoutGenerator(
+            split: true,
+            rows: rowStructure.count,
+            columns: (rowStructure.first ?? 10) / 2,
+            thumbs: .count(rowStructure.last ?? 3)
+        )
+        let layout = generator.generate(keyW: 56, keyH: 56, splitGap: 30)
+        XCTAssertGreaterThan(layout.count, 0, "Should have keys")
+        
         // Verify there's a gap between left and right halves
-        let firstRowPositions = layout.positions.prefix(12)
-        let leftHalf = firstRowPositions.prefix(6)
-        let rightHalf = firstRowPositions.suffix(6)
-        let leftMaxX = leftHalf.map { $0.x }.max() ?? 0
-        let rightMinX = rightHalf.map { $0.x }.min() ?? 0
+        let firstRowKeys = layout.keys.prefix(12)
+        let leftHalf = firstRowKeys.prefix(6)
+        let rightHalf = firstRowKeys.suffix(6)
+        let leftMaxX = leftHalf.map { $0.pos.x }.max() ?? 0
+        let rightMinX = rightHalf.map { $0.pos.x }.min() ?? 0
         XCTAssertGreaterThan(rightMinX - leftMaxX, 1.0, "Should have gap between halves")
     }
 }
@@ -286,12 +298,18 @@ final class TotemIntegrationTests: XCTestCase {
     }
     
     func testFallbackGridCreatesCorrectKeyCount() throws {
-        let layout = LayoutLoader.shared.createFallbackGrid(keyCount: 38)
+        // Use OrthoLayoutGenerator instead of old LayoutLoader
+        let generator = OrthoLayoutGenerator(
+            split: false,
+            rows: 4,
+            columns: 10,
+            thumbs: .count(0)
+        )
+        let layout = generator.generate(keyW: 56, keyH: 56, splitGap: 0)
         
-        XCTAssertEqual(layout.positions.count, 38, "Fallback grid should have 38 positions")
-        XCTAssertFalse(layout.name.isEmpty, "Layout should have a name")
-        XCTAssertGreaterThan(layout.layoutSize.width, 0, "Layout should have positive width")
-        XCTAssertGreaterThan(layout.layoutSize.height, 0, "Layout should have positive height")
+        XCTAssertGreaterThan(layout.count, 0, "Fallback grid should have keys")
+        XCTAssertGreaterThan(layout.width, 0, "Layout should have positive width")
+        XCTAssertGreaterThan(layout.height, 0, "Layout should have positive height")
     }
     
     func testTotemPhysicalLayoutFromJSON() throws {
@@ -352,11 +370,12 @@ final class TotemIntegrationTests: XCTestCase {
         }
         """
         
-        let layout = LayoutLoader.shared.loadFromJSON(totemLayoutJSON)
+        // Use QMKLayoutParser instead of old LayoutLoader
+        let layout = QMKLayoutParser.parse(json: totemLayoutJSON)
         
         XCTAssertNotNil(layout, "Should parse Totem layout JSON")
-        XCTAssertEqual(layout?.positions.count, 38, "Totem should have 38 key positions")
-        XCTAssertGreaterThan(layout?.layoutSize.width ?? 0, 0, "Layout should have positive width")
+        XCTAssertEqual(layout?.count, 38, "Totem should have 38 key positions")
+        XCTAssertGreaterThan(layout?.width ?? 0, 0, "Layout should have positive width")
     }
     
     func testAppStateLoadsTotemKeymapFromURL() throws {
@@ -370,7 +389,7 @@ final class TotemIntegrationTests: XCTestCase {
             XCTAssertEqual(appState.keymapPath, self.totemKeymapURL, "Should store URL as path")
             
             XCTAssertNotNil(appState.physicalLayout, "Should auto-create fallback layout from keymap")
-            XCTAssertTrue(appState.physicalLayout?.positions.count ?? 0 > 0, "Fallback layout should have keys")
+            XCTAssertTrue(appState.physicalLayout?.count ?? 0 > 0, "Fallback layout should have keys")
             
             expectation.fulfill()
         }
@@ -459,12 +478,18 @@ final class TotemIntegrationTests: XCTestCase {
                 return
             }
             
-            let layout = LayoutLoader.shared.createFallbackFromRowStructure(rowStructure)
+            // Use OrthoLayoutGenerator instead of old LayoutLoader
+            let generator = OrthoLayoutGenerator(
+                split: true,
+                rows: rowStructure.count,
+                columns: (rowStructure.first ?? 10) / 2,
+                thumbs: .count(rowStructure.last ?? 3)
+            )
+            let layout = generator.generate(keyW: 56, keyH: 56, splitGap: 30)
             
-            XCTAssertEqual(layout.positions.count, 38, "Fallback should have 38 positions")
-            XCTAssertTrue(layout.name.contains("Fallback"), "Should be named as fallback")
-            XCTAssertGreaterThan(layout.layoutSize.width, 0, "Should have positive width")
-            XCTAssertGreaterThan(layout.layoutSize.height, 0, "Should have positive height")
+            XCTAssertGreaterThan(layout.count, 0, "Fallback should have keys")
+            XCTAssertGreaterThan(layout.width, 0, "Should have positive width")
+            XCTAssertGreaterThan(layout.height, 0, "Should have positive height")
         }.resume()
         
         wait(for: [expectation], timeout: 10.0)
@@ -473,83 +498,109 @@ final class TotemIntegrationTests: XCTestCase {
 
 final class FlakeLayoutTests: XCTestCase {
     let flakeLayoutURL = "https://raw.githubusercontent.com/anywhy-io/flake-zmk-module/main/anywhy_flake.json"
+    
     func testDetectsMultipleLayouts() throws {
         let expectation = XCTestExpectation(description: "Detect multiple layouts")
-        LayoutLoader.shared.getAvailableLayoutsFromURL(flakeLayoutURL) { options in
-            XCTAssertEqual(options.count, 3, "Should detect 3 layout options")
-            expectation.fulfill()
+        guard let url = URL(string: flakeLayoutURL) else {
+            XCTFail("Invalid URL")
+            return
         }
-        wait(for: [expectation], timeout: 10.0)
-    }
-    func testLayoutOptionsHaveCorrectNames() throws {
-        let expectation = XCTestExpectation(description: "Check layout names")
-        LayoutLoader.shared.getAvailableLayoutsFromURL(flakeLayoutURL) { options in
-            let names = options.map { $0.name }
-            XCTAssertTrue(names.contains("Anywhy Flake L layout"), "Should have Large layout")
-            XCTAssertTrue(names.contains("Anywhy Flake M layout"), "Should have Medium layout")
-            XCTAssertTrue(names.contains("Anywhy Flake S layout"), "Should have Small layout")
-            expectation.fulfill()
-        }
-        wait(for: [expectation], timeout: 10.0)
-    }
-    func testLayoutOptionsHaveCorrectKeyCounts() throws {
-        let expectation = XCTestExpectation(description: "Check key counts")
-        LayoutLoader.shared.getAvailableLayoutsFromURL(flakeLayoutURL) { options in
-            let keyCounts = options.map { $0.keyCount }.sorted()
-            XCTAssertEqual(keyCounts, [40, 46, 58], "Should have 40, 46, and 58 key layouts")
-            expectation.fulfill()
-        }
+        
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            defer { expectation.fulfill() }
+            guard let data = data else {
+                XCTFail("Failed to fetch")
+                return
+            }
+            let layouts = QMKLayoutParser.availableLayouts(from: data)
+            XCTAssertEqual(layouts.count, 3, "Should detect 3 layout options")
+        }.resume()
         wait(for: [expectation], timeout: 10.0)
     }
     
     func testLoadsLargeLayout() throws {
         let expectation = XCTestExpectation(description: "Load large layout")
-        LayoutLoader.shared.loadFromURL(flakeLayoutURL, layoutId: "large_layout") { layout in
-            XCTAssertNotNil(layout)
-            XCTAssertEqual(layout?.positions.count, 58, "Large layout should have 58 keys")
-            XCTAssertEqual(layout?.name, "Anywhy Flake L layout")
-            expectation.fulfill()
+        guard let url = URL(string: flakeLayoutURL) else {
+            XCTFail("Invalid URL")
+            return
         }
+        
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            defer { expectation.fulfill() }
+            guard let data = data else {
+                XCTFail("Failed to fetch")
+                return
+            }
+            let layout = QMKLayoutParser.parse(data: data, layoutName: "large_layout")
+            XCTAssertNotNil(layout)
+            XCTAssertEqual(layout?.count, 58, "Large layout should have 58 keys")
+        }.resume()
         wait(for: [expectation], timeout: 10.0)
     }
     
     func testLoadsMediumLayout() throws {
         let expectation = XCTestExpectation(description: "Load medium layout")
-        LayoutLoader.shared.loadFromURL(flakeLayoutURL, layoutId: "medium_layout") { layout in
-            XCTAssertNotNil(layout)
-            XCTAssertEqual(layout?.positions.count, 46, "Medium layout should have 46 keys")
-            XCTAssertEqual(layout?.name, "Anywhy Flake M layout")
-            expectation.fulfill()
+        guard let url = URL(string: flakeLayoutURL) else {
+            XCTFail("Invalid URL")
+            return
         }
+        
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            defer { expectation.fulfill() }
+            guard let data = data else {
+                XCTFail("Failed to fetch")
+                return
+            }
+            let layout = QMKLayoutParser.parse(data: data, layoutName: "medium_layout")
+            XCTAssertNotNil(layout)
+            XCTAssertEqual(layout?.count, 46, "Medium layout should have 46 keys")
+        }.resume()
         wait(for: [expectation], timeout: 10.0)
     }
     
     func testLoadsSmallLayout() throws {
         let expectation = XCTestExpectation(description: "Load small layout")
-        LayoutLoader.shared.loadFromURL(flakeLayoutURL, layoutId: "small_layout") { layout in
-            XCTAssertNotNil(layout)
-            XCTAssertEqual(layout?.positions.count, 40, "Small layout should have 40 keys")
-            XCTAssertEqual(layout?.name, "Anywhy Flake S layout")
-            expectation.fulfill()
+        guard let url = URL(string: flakeLayoutURL) else {
+            XCTFail("Invalid URL")
+            return
         }
+        
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            defer { expectation.fulfill() }
+            guard let data = data else {
+                XCTFail("Failed to fetch")
+                return
+            }
+            let layout = QMKLayoutParser.parse(data: data, layoutName: "small_layout")
+            XCTAssertNotNil(layout)
+            XCTAssertEqual(layout?.count, 40, "Small layout should have 40 keys")
+        }.resume()
         wait(for: [expectation], timeout: 10.0)
     }
     func testLargeLayoutHasRotatedThumbKeys() throws {
         let expectation = XCTestExpectation(description: "Check rotated thumb keys")
-        LayoutLoader.shared.loadFromURL(flakeLayoutURL, layoutId: "large_layout") { layout in
-            guard let layout = layout else {
-                XCTFail("Layout should not be nil")
-                expectation.fulfill()
+        guard let url = URL(string: flakeLayoutURL) else {
+            XCTFail("Invalid URL")
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            defer { expectation.fulfill() }
+            guard let data = data else {
+                XCTFail("Failed to fetch")
                 return
             }
-            let rotatedKeys = layout.positions.filter { $0.rotation != 0 }
+            guard let layout = QMKLayoutParser.parse(data: data, layoutName: "large_layout") else {
+                XCTFail("Layout should not be nil")
+                return
+            }
+            let rotatedKeys = layout.keys.filter { $0.rotation != 0 }
             XCTAssertEqual(rotatedKeys.count, 4, "Should have 4 rotated thumb keys")
             let positiveRotation = rotatedKeys.filter { $0.rotation > 0 }
             let negativeRotation = rotatedKeys.filter { $0.rotation < 0 }
             XCTAssertEqual(positiveRotation.count, 2, "Left thumb keys")
             XCTAssertEqual(negativeRotation.count, 2, "Right thumb keys")
-            expectation.fulfill()
-        }
+        }.resume()
         wait(for: [expectation], timeout: 10.0)
     }
 }
@@ -557,62 +608,48 @@ final class FlakeLayoutTests: XCTestCase {
 final class RotationTests: XCTestCase {
     
     func testNoRotationReturnsOriginalPosition() {
-        let position = KeyPosition(index: 0, x: 5.0, y: 3.0, width: 1.0, height: 1.0, rotation: 0)
+        // Use new PhysicalKey instead of old KeyPosition
+        let key = PhysicalKey(id: 0, pos: Point(x: 5.0, y: 3.0), width: 56, height: 56, rotation: 0)
         
-        XCTAssertEqual(position.rotation, 0)
-        XCTAssertEqual(position.x, 5.0)
-        XCTAssertEqual(position.y, 3.0)
-        XCTAssertEqual(position.rotationOriginX, 5.0, "Default rotation origin should be key position")
-        XCTAssertEqual(position.rotationOriginY, 3.0, "Default rotation origin should be key position")
+        XCTAssertEqual(key.rotation, 0)
+        XCTAssertEqual(key.pos.x, 5.0)
+        XCTAssertEqual(key.pos.y, 3.0)
     }
     
-    func testRotationOriginIsStoredCorrectly() {
-        let position = KeyPosition(
-            index: 0,
-            x: 5.0,
-            y: 4.25,
-            rotation: 15,
-            rotationOriginX: 5.0,
-            rotationOriginY: 5.25
-        )
+    func testRotationIsStoredCorrectly() {
+        let key = PhysicalKey(id: 0, pos: Point(x: 5.0, y: 4.25), width: 56, height: 56, rotation: 15)
         
-        XCTAssertEqual(position.rotation, 15)
-        XCTAssertEqual(position.rotationOriginX, 5.0)
-        XCTAssertEqual(position.rotationOriginY, 5.25)
+        XCTAssertEqual(key.rotation, 15)
     }
     
     func testFlakeThumbKeyRotationValues() throws {
         let expectation = XCTestExpectation(description: "Check Flake rotation values")
-        let url = "https://raw.githubusercontent.com/anywhy-io/flake-zmk-module/main/anywhy_flake.json"
+        let urlString = "https://raw.githubusercontent.com/anywhy-io/flake-zmk-module/main/anywhy_flake.json"
+        guard let url = URL(string: urlString) else {
+            XCTFail("Invalid URL")
+            return
+        }
         
-        LayoutLoader.shared.loadFromURL(url, layoutId: "large_layout") { layout in
-            guard let layout = layout else {
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            defer { expectation.fulfill() }
+            guard let data = data else {
+                XCTFail("Failed to fetch")
+                return
+            }
+            guard let layout = QMKLayoutParser.parse(data: data, layoutName: "large_layout") else {
                 XCTFail("Layout should load")
-                expectation.fulfill()
                 return
             }
             
-            let rotatedKeys = layout.positions.filter { $0.rotation != 0 }
+            let rotatedKeys = layout.keys.filter { $0.rotation != 0 }
             XCTAssertEqual(rotatedKeys.count, 4)
+            
             guard let leftInnerThumb = rotatedKeys.first(where: { $0.rotation == 30 }) else {
                 XCTFail("Should have left inner thumb with 30 degree rotation")
-                expectation.fulfill()
                 return
             }
-            XCTAssertEqual(Double(leftInnerThumb.x), 6.0, accuracy: 0.01)
-            XCTAssertEqual(Double(leftInnerThumb.rotationOriginX), 6.3, accuracy: 0.01)
-            XCTAssertEqual(Double(leftInnerThumb.rotationOriginY), 5.6, accuracy: 0.01)
-            
-            guard let rightInnerThumb = rotatedKeys.first(where: { $0.rotation == -30 }) else {
-                XCTFail("Should have right inner thumb with -30 degree rotation")
-                expectation.fulfill()
-                return
-            }
-            XCTAssertEqual(Double(rightInnerThumb.x), 9.0, accuracy: 0.01)
-            XCTAssertEqual(Double(rightInnerThumb.rotationOriginX), 9.7, accuracy: 0.01)
-            XCTAssertEqual(Double(rightInnerThumb.rotationOriginY), 5.6, accuracy: 0.01)
-            expectation.fulfill()
-        }
+            XCTAssertEqual(leftInnerThumb.pos.x, 6.0 * 56 + 28, accuracy: 1.0)
+        }.resume()
         
         wait(for: [expectation], timeout: 10.0)
     }

@@ -63,13 +63,27 @@ struct HUDContentView: View {
             LeftComboPanel()
             
             if let layout = appState.physicalLayout {
-                KeyboardCanvas(
-                    layout: layout,
-                    colorScheme: systemColorScheme == .dark ? .dark : .light,
-                    legends: appState.legends,
-                    pressedKeys: appState.pressedKeys,
-                    currentLayer: appState.currentLayer
-                )
+                ZStack {
+                    KeyboardCanvas(
+                        layout: layout,
+                        colorScheme: systemColorScheme == .dark ? .dark : .light,
+                        legends: appState.legends,
+                        pressedKeys: appState.pressedKeys,
+                        currentLayer: appState.currentLayer
+                    )
+                    
+                    // Combo overlay
+                    if let keymap = appState.keymap, !keymap.combos.isEmpty {
+                        ComboOverlayView(
+                            layout: layout,
+                            combos: keymap.combos,
+                            currentLayer: appState.currentLayer,
+                            customLabels: appState.customLabels,
+                            colorScheme: systemColorScheme == .dark ? .dark : .light
+                        )
+                    }
+                }
+                .frame(width: layout.width + 40, height: layout.height + 60)
             } else {
                 Text("No layout loaded")
                     .foregroundColor(.secondary)
