@@ -462,7 +462,86 @@ enum KeymapParser {
     }
     
     private static func parseBehaviors(from content: String) -> [String: Behavior] {
-        return [:]
+        var behaviors: [String: Behavior] = [:]
+        
+        // Find behaviors section
+        guard let behaviorsSection = findBehaviorsSection(in: content) else {
+            return behaviors
+        }
+        
+        // Parse individual behavior blocks
+        let behaviorBlockPattern = "(\\w+)\\s*:\\s*(\\w+)\\s*\\{([^}]+)\\}"
+        guard let regex = try? NSRegularExpression(pattern: behaviorBlockPattern, options: [.dotMatchesLineSeparators]) else {
+            return behaviors
+        }
+        
+        let nsContent = behaviorsSection as NSString
+        let matches = regex.matches(in: behaviorsSection, options: [], range: NSRange(location: 0, length: nsContent.length))
+        
+        for match in matches {
+            guard match.numberOfRanges >= 4 else { continue }
+            
+            let name = nsContent.substring(with: match.range(at: 1))
+            _ = nsContent.substring(with: match.range(at: 2))  // label (e.g., hml: hml)
+            let block = nsContent.substring(with: match.range(at: 3))
+            
+            // Extract compatible type
+            var behaviorType = "unknown"
+            if let compatibleRange = block.range(of: "compatible\\s*=\\s*\"([^\"]+)\"", options: .regularExpression) {
+                let compatibleStr = String(block[compatibleRange])
+                if let typeStart = compatibleStr.firstIndex(of: "\""),
+                   let typeEnd = compatibleStr.lastIndex(of: "\"") {
+                    let start = compatibleStr.index(after: typeStart)
+                    if start < typeEnd {
+                        behaviorType = String(compatibleStr[start..<typeEnd])
+                    }
+                }
+            }
+            
+            // Extract bindings if present
+            var bindings: [String] = []
+            if let bindingsRange = block.range(of: "bindings\\s*=\\s*<([^>]+)>", options: .regularExpression) {
+                let bindingsStr = String(block[bindingsRange])
+                if let start = bindingsStr.firstIndex(of: "<"),
+                   let end = bindingsStr.lastIndex(of: ">") {
+                    let innerStart = bindingsStr.index(after: start)
+                    if innerStart < end {
+                        let inner = String(bindingsStr[innerStart..<end])
+                        bindings = inner.components(separatedBy: " ").filter { !$0.isEmpty }
+                    }
+                }
+            }
+            
+            behaviors[name] = Behavior(name: name, type: behaviorType, bindings: bindings)
+        }
+        
+        return behaviors
+    }
+    
+    private static func findBehaviorsSection(in data: String) -> String? {
+        guard let behaviorsStart = data.range(of: "behaviors\\s*\\{", options: .regularExpression) else {
+            return nil
+        }
+        
+        var braceCount = 0
+        var foundFirst = false
+        var endIndex = behaviorsStart.upperBound
+        
+        for i in data.indices[behaviorsStart.lowerBound...] {
+            let char = data[i]
+            if char == "{" {
+                braceCount += 1
+                foundFirst = true
+            } else if char == "}" {
+                braceCount -= 1
+                if foundFirst && braceCount == 0 {
+                    endIndex = data.index(after: i)
+                    break
+                }
+            }
+        }
+        
+        return String(data[behaviorsStart.lowerBound..<endIndex])
     }
     
     private static func formatTapDanceLabel(_ name: String) -> String {

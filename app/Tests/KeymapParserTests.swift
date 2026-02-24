@@ -429,4 +429,81 @@ final class KeymapParserTests: XCTestCase {
         XCTAssertEqual(bindings?[1].displayLabel, "BLE")
         XCTAssertEqual(bindings?[2].displayLabel, "⇄")
     }
+    
+    // MARK: - Behavior Definition Parsing Tests
+    
+    func testParsesBehaviorDefinitions() throws {
+        let content = """
+        / {
+            behaviors {
+                hml: hml {
+                    compatible = "zmk,behavior-hold-tap";
+                    #binding-cells = <2>;
+                    flavor = "balanced";
+                    tapping-term-ms = <280>;
+                    bindings = <&kp>, <&kp>;
+                };
+                td_a: td_a {
+                    compatible = "zmk,behavior-tap-dance";
+                    #binding-cells = <0>;
+                    bindings = <&kp A>, <&kp B>;
+                };
+            };
+        };
+        keymap {
+            compatible = "zmk,keymap";
+            base {
+                bindings = <&hml LGUI A>;
+            };
+        };
+        """
+        
+        let keymap = KeymapParser.parse(from: content)
+        
+        XCTAssertNotNil(keymap)
+        XCTAssertEqual(keymap?.behaviors.count, 2)
+        
+        // Check hml behavior
+        let hml = keymap?.behaviors["hml"]
+        XCTAssertNotNil(hml)
+        XCTAssertEqual(hml?.type, "zmk,behavior-hold-tap")
+        XCTAssertTrue(hml?.bindings.contains("&kp") ?? false)  // bindings are parsed from <&kp>, <&kp>;
+        
+        // Check td_a behavior
+        let td = keymap?.behaviors["td_a"]
+        XCTAssertNotNil(td)
+        XCTAssertEqual(td?.type, "zmk,behavior-tap-dance")
+    }
+    
+    func testParsesHomeRowModBinding() throws {
+        let content = """
+        keymap {
+            compatible = "zmk,keymap";
+            base {
+                bindings = <&hml LGUI A &hmr RALT SEMI>;
+            };
+        };
+        """
+        
+        let keymap = KeymapParser.parse(from: content)
+        let bindings = keymap?.layers.first?.bindings
+        
+        XCTAssertEqual(bindings?.count, 2)
+        
+        // First binding: &hml LGUI A
+        if case .holdTap(let hold, let tap) = bindings?[0].type {
+            XCTAssertEqual(hold, "⌘")  // LGUI -> ⌘
+            XCTAssertEqual(tap, "A")
+        } else {
+            XCTFail("Expected holdTap binding type")
+        }
+        
+        // Second binding: &hmr RALT SEMI
+        if case .holdTap(let hold, let tap) = bindings?[1].type {
+            XCTAssertEqual(hold, "⌥")  // RALT -> ⌥
+            XCTAssertEqual(tap, ";")  // SEMI -> ;
+        } else {
+            XCTFail("Expected holdTap binding type")
+        }
+    }
 }
