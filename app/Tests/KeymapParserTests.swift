@@ -103,7 +103,7 @@ final class KeymapParserTests: XCTestCase {
         let bindings = keymap?.layers.first?.bindings
         
         XCTAssertEqual(bindings?.count, 3)
-        XCTAssertEqual(bindings?[0].displayLabel, "")
+        XCTAssertEqual(bindings?[0].displayLabel, "▽")
         XCTAssertEqual(bindings?[1].displayLabel, "")
         XCTAssertEqual(bindings?[2].displayLabel, "X")
     }

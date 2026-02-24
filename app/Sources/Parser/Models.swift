@@ -35,22 +35,23 @@ struct Binding {
     func displayLabel(with customLabels: [String: String]) -> String {
         switch type {
         case .keyPress(let key):
-            return key
+            return ZMKKeycodeMap.convert(key)
         case .layerTap(_, let key):
-            return key
+            return ZMKKeycodeMap.convert(key)
         case .layerMomentary(let layer):
             return "L\(layer)"
-        case .modTap(_, let tap):
-            return tap
+        case .modTap(let mod, let tap):
+            // For home row mods, show the tap key with converted symbol
+            return ZMKKeycodeMap.convert(tap)
         case .holdTap(_, let tap):
-            return tap
+            return ZMKKeycodeMap.convert(tap)
         case .tapDance(let name):
             if let custom = customLabels[name] {
                 return custom
             }
             return formatTapDanceName(name)
         case .transparent:
-            return ""
+            return "▽"
         case .none:
             return ""
         case .custom(let raw):
@@ -64,9 +65,9 @@ struct Binding {
     var holdLabel: String? {
         switch type {
         case .modTap(let mod, _):
-            return mod
+            return ZMKKeycodeMap.convert(mod)
         case .holdTap(let hold, _):
-            return hold
+            return ZMKKeycodeMap.convert(hold)
         case .layerTap(let layer, _):
             return "L\(layer)"
         default:

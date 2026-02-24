@@ -146,7 +146,7 @@ final class ComboRendererTests: XCTestCase {
         let spec = ComboRenderer.ComboSpec(from: combo)
         
         XCTAssertEqual(spec.keyPositions, [0, 1])
-        XCTAssertEqual(spec.result.tap, "ESC")
+        XCTAssertEqual(spec.result.tap, "⎋")
         XCTAssertFalse(spec.hidden)
     }
     

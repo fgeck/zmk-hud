@@ -6,7 +6,7 @@ final class ModelsTests: XCTestCase {
     func testBindingDisplayLabelForKeyPress() {
         let binding = Binding(type: .keyPress("SPACE"), raw: "&kp SPACE")
         
-        XCTAssertEqual(binding.displayLabel, "SPACE")
+        XCTAssertEqual(binding.displayLabel, "␣")
         XCTAssertNil(binding.holdLabel)
     }
     
@@ -20,7 +20,7 @@ final class ModelsTests: XCTestCase {
     func testBindingDisplayLabelForLayerTap() {
         let binding = Binding(type: .layerTap(1, "SPACE"), raw: "&lt 1 SPACE")
         
-        XCTAssertEqual(binding.displayLabel, "SPACE")
+        XCTAssertEqual(binding.displayLabel, "␣")
         XCTAssertEqual(binding.holdLabel, "L1")
     }
     
@@ -28,14 +28,14 @@ final class ModelsTests: XCTestCase {
         let binding = Binding(type: .modTap("LSHIFT", "A"), raw: "&mt LSHIFT A")
         
         XCTAssertEqual(binding.displayLabel, "A")
-        XCTAssertEqual(binding.holdLabel, "LSHIFT")
+        XCTAssertEqual(binding.holdLabel, "⇧")
     }
     
     func testBindingDisplayLabelForHoldTap() {
         let binding = Binding(type: .holdTap("LGUI", "S"), raw: "&hml LGUI S")
         
         XCTAssertEqual(binding.displayLabel, "S")
-        XCTAssertEqual(binding.holdLabel, "LGUI")
+        XCTAssertEqual(binding.holdLabel, "⌘")
     }
     
     func testBindingDisplayLabelForTapDance() {
@@ -48,7 +48,7 @@ final class ModelsTests: XCTestCase {
     func testBindingDisplayLabelForTransparent() {
         let binding = Binding(type: .transparent, raw: "&trans")
         
-        XCTAssertEqual(binding.displayLabel, "")
+        XCTAssertEqual(binding.displayLabel, "▽")
         XCTAssertNil(binding.holdLabel)
     }
     
@@ -76,7 +76,7 @@ final class ModelsTests: XCTestCase {
         )
         
         XCTAssertEqual(combo.positions.count, 2)
-        XCTAssertEqual(combo.result.displayLabel, "EXCL")
+        XCTAssertEqual(combo.result.displayLabel, "!")
     }
     
     func testComboWithThreePositions() {
