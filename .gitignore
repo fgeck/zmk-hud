@@ -1,1 +1,12 @@
+# Swift build artifacts
 .build/
+**/.build/
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+
+# macOS
+.DS_Store
