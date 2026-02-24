@@ -3,15 +3,38 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject var appState: AppState
-    @AppStorage("hudPosition") private var hudPosition: HUDPosition = .topRight
-    @AppStorage("comboPanelSide") private var comboPanelSide: ComboPanelSide = .right
-    @AppStorage("hudOpacity") private var hudOpacity: Double = 0.95
-    @AppStorage("hudScale") private var hudScale: Double = 1.0
     @State private var keymapURL: String = ""
     @State private var layoutURL: String = ""
     
+    private var selectedLayoutBinding: SwiftUI.Binding<String> {
+        SwiftUI.Binding(
+            get: { appState.selectedLayoutId ?? "" },
+            set: { appState.selectLayout($0) }
+        )
+    }
+    
+    private var opacityBinding: SwiftUI.Binding<Double> {
+        SwiftUI.Binding(
+            get: { appState.hudOpacity },
+            set: { 
+                appState.hudOpacity = $0
+                appState.saveConfig()
+            }
+        )
+    }
+    
+    private var scaleBinding: SwiftUI.Binding<Double> {
+        SwiftUI.Binding(
+            get: { appState.hudScale },
+            set: { 
+                appState.hudScale = $0
+                appState.saveConfig()
+            }
+        )
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 16) {
             GroupBox("Keymap (.keymap file)") {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -42,10 +65,27 @@ struct SettingsView: View {
             GroupBox("Physical Layout (.json file)") {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text(appState.layoutPath ?? "Auto-inferred from keymap")
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
+                        VStack(alignment: .leading, spacing: 2) {
+                            if let layoutPath = appState.layoutPath {
+                                Text(layoutPath)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                if let layout = appState.physicalLayout {
+                                    Text("✓ \(layout.name) (\(layout.positions.count) keys)")
+                                        .foregroundColor(.green)
+                                        .font(.caption)
+                                }
+                            } else {
+                                Text("Auto-inferred from keymap")
+                                    .foregroundColor(.secondary)
+                                if let layout = appState.physicalLayout {
+                                    Text("Using: \(layout.name)")
+                                        .foregroundColor(.orange)
+                                        .font(.caption)
+                                }
+                            }
+                        }
                         Spacer()
                         if appState.layoutPath != nil {
                             Button("Clear") {
@@ -57,31 +97,38 @@ struct SettingsView: View {
                         }
                     }
                     
+                    if appState.availableLayouts.count > 1 {
+                        Picker("Layout Size", selection: selectedLayoutBinding) {
+                            ForEach(appState.availableLayouts) { option in
+                                Text("\(option.name) (\(option.keyCount) keys)")
+                                    .tag(option.id)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    
                     HStack {
                         TextField("Or enter URL...", text: $layoutURL)
                             .textFieldStyle(.roundedBorder)
-                        Button("Load") {
-                            if layoutURL.hasPrefix("http") {
-                                appState.loadLayoutFromURL(layoutURL)
+                        
+                        if appState.isLoadingLayout {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                                .frame(width: 50)
+                        } else {
+                            Button("Load") {
+                                if layoutURL.hasPrefix("http") {
+                                    appState.loadLayoutFromURL(layoutURL)
+                                }
                             }
-                        }
-                        .disabled(!layoutURL.hasPrefix("http"))
-                    }
-                }
-                .padding(.vertical, 4)
-            }
-            
-            GroupBox("Position") {
-                VStack(alignment: .leading, spacing: 12) {
-                    Picker("HUD Position", selection: $hudPosition) {
-                        ForEach(HUDPosition.allCases, id: \.self) { position in
-                            Text(position.displayName).tag(position)
+                            .disabled(!layoutURL.hasPrefix("http"))
                         }
                     }
                     
-                    Picker("Combo Panel", selection: $comboPanelSide) {
-                        Text("Left").tag(ComboPanelSide.left)
-                        Text("Right").tag(ComboPanelSide.right)
+                    if let error = appState.layoutLoadError {
+                        Text(error)
+                            .foregroundColor(.red)
+                            .font(.caption)
                     }
                 }
                 .padding(.vertical, 4)
@@ -91,21 +138,25 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Text("Opacity")
-                        Slider(value: $hudOpacity, in: 0.5...1.0)
+                        Slider(value: opacityBinding, in: 0.5...1.0)
                     }
                     
                     HStack {
                         Text("Scale")
-                        Slider(value: $hudScale, in: 0.5...1.5)
+                        Slider(value: scaleBinding, in: 0.5...1.5)
                     }
                 }
                 .padding(.vertical, 4)
             }
             
+            Text("Config: ~/.config/zmk-hud/config.yaml")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
             Spacer()
         }
         .padding()
-        .frame(width: 450, height: 480)
+        .frame(width: 450, height: 500)
     }
     
     private func chooseKeymapFile() {
@@ -131,21 +182,4 @@ struct SettingsView: View {
             appState.loadLayoutFromFile(url.path)
         }
     }
-}
-
-enum HUDPosition: String, CaseIterable {
-    case topLeft, topRight, bottomLeft, bottomRight
-    
-    var displayName: String {
-        switch self {
-        case .topLeft: return "Top Left"
-        case .topRight: return "Top Right"
-        case .bottomLeft: return "Bottom Left"
-        case .bottomRight: return "Bottom Right"
-        }
-    }
-}
-
-enum ComboPanelSide: String {
-    case left, right
 }

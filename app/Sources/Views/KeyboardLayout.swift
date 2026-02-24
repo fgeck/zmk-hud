@@ -49,50 +49,109 @@ struct PhysicalLayout {
         return positions[index]
     }
     
-    func scaledPosition(for index: Int) -> (x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat, rotation: CGFloat)? {
+    func scaledPosition(for index: Int) -> (x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat, rotation: CGFloat, rotationOriginX: CGFloat, rotationOriginY: CGFloat)? {
         guard let pos = position(for: index) else { return nil }
         return (
             x: pos.x * keyUnit,
             y: pos.y * keyUnit,
             width: pos.width * keyUnit,
             height: pos.height * keyUnit,
-            rotation: pos.rotation
+            rotation: pos.rotation,
+            rotationOriginX: pos.rotationOriginX * keyUnit,
+            rotationOriginY: pos.rotationOriginY * keyUnit
         )
     }
+}
+
+struct LayoutOption: Identifiable, Hashable {
+    let id: String
+    let name: String
+    let keyCount: Int
+}
+
+struct LayoutParseResult {
+    let options: [LayoutOption]
+    let selectedLayout: PhysicalLayout?
 }
 
 class LayoutLoader {
     static let shared = LayoutLoader()
     
-    // MARK: - Primary: Load from JSON (preferred)
-    
-    func loadFromJSON(_ jsonString: String, keyUnit: CGFloat = 56) -> PhysicalLayout? {
+    func loadFromJSON(_ jsonString: String, keyUnit: CGFloat = 56, layoutId: String? = nil) -> PhysicalLayout? {
         guard let data = jsonString.data(using: .utf8) else { return nil }
-        return parseLayoutJSON(data, keyUnit: keyUnit)
+        return parseLayoutJSON(data, keyUnit: keyUnit, layoutId: layoutId)
     }
     
-    func loadFromFile(_ path: String, keyUnit: CGFloat = 56) -> PhysicalLayout? {
+    func loadFromFile(_ path: String, keyUnit: CGFloat = 56, layoutId: String? = nil) -> PhysicalLayout? {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return nil }
-        return parseLayoutJSON(data, keyUnit: keyUnit)
+        return parseLayoutJSON(data, keyUnit: keyUnit, layoutId: layoutId)
     }
     
-    func loadFromURL(_ urlString: String, keyUnit: CGFloat = 56, completion: @escaping (PhysicalLayout?) -> Void) {
-        guard let url = URL(string: urlString) else {
+    func loadFromURL(_ urlString: String, keyUnit: CGFloat = 56, layoutId: String? = nil, completion: @escaping (PhysicalLayout?) -> Void) {
+        let normalizedURL = Self.normalizeGitHubURL(urlString)
+        guard let url = URL(string: normalizedURL) else {
             completion(nil)
             return
         }
-        
         URLSession.shared.dataTask(with: url) { data, _, _ in
             guard let data = data else {
                 DispatchQueue.main.async { completion(nil) }
                 return
             }
-            let layout = self.parseLayoutJSON(data, keyUnit: keyUnit)
+            let layout = self.parseLayoutJSON(data, keyUnit: keyUnit, layoutId: layoutId)
             DispatchQueue.main.async { completion(layout) }
         }.resume()
     }
     
-    private func parseLayoutJSON(_ data: Data, keyUnit: CGFloat) -> PhysicalLayout? {
+    func getAvailableLayoutsFromFile(_ path: String) -> [LayoutOption] {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return [] }
+        return parseLayoutOptions(data)
+    }
+    
+    func getAvailableLayoutsFromURL(_ urlString: String, completion: @escaping ([LayoutOption]) -> Void) {
+        let normalizedURL = Self.normalizeGitHubURL(urlString)
+        guard let url = URL(string: normalizedURL) else {
+            completion([])
+            return
+        }
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            guard let data = data else {
+                DispatchQueue.main.async { completion([]) }
+                return
+            }
+            let options = self.parseLayoutOptions(data)
+            DispatchQueue.main.async { completion(options) }
+        }.resume()
+    }
+    
+    private static func normalizeGitHubURL(_ urlString: String) -> String {
+        if urlString.contains("github.com") && urlString.contains("/blob/") {
+            return urlString
+                .replacingOccurrences(of: "github.com", with: "raw.githubusercontent.com")
+                .replacingOccurrences(of: "/blob/", with: "/")
+        }
+        return urlString
+    }
+    
+    private func parseLayoutOptions(_ data: Data) -> [LayoutOption] {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let layouts = json["layouts"] as? [String: Any] else {
+            return []
+        }
+        
+        var options: [LayoutOption] = []
+        for (key, value) in layouts {
+            if let layoutDict = value as? [String: Any],
+               let layoutArray = layoutDict["layout"] as? [[String: Any]] {
+                let name = (layoutDict["name"] as? String) ?? key
+                options.append(LayoutOption(id: key, name: name, keyCount: layoutArray.count))
+            }
+        }
+        
+        return options.sorted { $0.keyCount > $1.keyCount }
+    }
+    
+    private func parseLayoutJSON(_ data: Data, keyUnit: CGFloat, layoutId: String? = nil) -> PhysicalLayout? {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return nil
         }
@@ -101,7 +160,11 @@ class LayoutLoader {
         var layoutName = "Custom"
         
         if let layouts = json["layouts"] as? [String: Any] {
-            if let firstLayout = layouts.values.first as? [String: Any],
+            if let specificId = layoutId, let specificLayout = layouts[specificId] as? [String: Any],
+               let layout = specificLayout["layout"] as? [[String: Any]] {
+                layoutArray = layout
+                layoutName = (specificLayout["name"] as? String) ?? specificId
+            } else if let firstLayout = layouts.values.first as? [String: Any],
                let layout = firstLayout["layout"] as? [[String: Any]] {
                 layoutArray = layout
                 layoutName = (firstLayout["name"] as? String) ?? "Custom"
@@ -139,8 +202,6 @@ class LayoutLoader {
         
         return PhysicalLayout(name: layoutName, positions: positions, keyUnit: keyUnit)
     }
-    
-    // MARK: - Fallback: Create from keymap row structure (when no JSON provided)
     
     func createFallbackFromRowStructure(_ rowStructure: [Int], keyUnit: CGFloat = 56) -> PhysicalLayout {
         var positions: [KeyPosition] = []

@@ -1,0 +1,159 @@
+/ {
+    keymap {
+        compatible = "zmk,keymap";
+
+        Base {
+            display-name = "Base";
+            bindings = <
+&none       &none     &none     &none      &none      &none          &none    &none     &none      &none      &none      &none
+&kp ENTER   &kp Q     &kp W     &kp E      &kp R      &kp T          &kp Y    &kp U     &kp I      &kp O      &kp P      &kp BSPC
+&kp TAB     &kp A     &kp S     &kp D      &kp F      &kp G          &kp H    &kp J     &kp K      &kp L      &kp SEMI   &kp SQT
+&kp LBKT    &kp Z     &kp X     &kp C      &kp V      &kp B          &kp N    &kp M     &kp COMMA  &kp DOT    &kp FSLH   &kp RBKT
+                      &mo 4     &kp LALT   &kp LGUI   &kp SPACE &mo 1     &mo 2  &kp RSHFT &kp RGUI   &kp RALT   &mo 3
+            >;
+        };
+
+        Num {
+            display-name = "Num";
+            bindings = <
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+&trans      &kp N1    &kp N2    &kp N3     &kp N4     &kp N5         &kp N6   &kp N7    &kp N8     &kp N9     &kp N0     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &kp N4    &kp N5     &kp N6     &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &kp N1    &kp N2     &kp N3     &trans     &trans
+                      &trans    &trans     &trans     &trans    &trans    &trans &kp N0    &trans     &trans     &trans
+            >;
+        };
+
+        Nav {
+            display-name = "Nav";
+            bindings = <
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &kp UP     &trans     &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &kp LEFT  &kp DOWN   &kp RIGHT  &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+                      &trans    &trans     &trans     &trans    &trans    &trans &trans    &trans     &trans     &trans
+            >;
+        };
+
+        Fn {
+            display-name = "Fn";
+            bindings = <
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+&trans      &kp F1    &kp F2    &kp F3     &kp F4     &kp F5         &kp F6   &kp F7    &kp F8     &kp F9     &kp F10    &trans
+&trans      &kp F11   &kp F12   &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+                      &trans    &trans     &trans     &trans    &trans    &trans &trans    &trans     &trans     &trans
+            >;
+        };
+
+        Idea {
+            display-name = "Idea";
+            bindings = <
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+&trans      &trans    &trans    &trans     &trans     &trans         &trans   &trans    &trans     &trans     &trans     &trans
+                      &trans    &trans     &trans     &trans    &trans    &trans &trans    &trans     &trans     &trans
+            >;
+        };
+    };
+
+    combos {
+        compatible = "zmk,combos";
+
+        combo_excl {
+            key-positions = <13 25>;
+            bindings = <&kp EXCL>;
+        };
+
+        combo_at {
+            key-positions = <14 26>;
+            bindings = <&kp AT>;
+        };
+
+        combo_hash {
+            key-positions = <15 27>;
+            bindings = <&kp HASH>;
+        };
+
+        combo_dllr {
+            key-positions = <16 28>;
+            bindings = <&kp DLLR>;
+        };
+
+        combo_prcnt {
+            key-positions = <17 29>;
+            bindings = <&kp PRCNT>;
+        };
+
+        combo_caret {
+            key-positions = <18 30>;
+            bindings = <&kp CARET>;
+        };
+
+        combo_plus {
+            key-positions = <19 31>;
+            bindings = <&kp PLUS>;
+        };
+
+        combo_star {
+            key-positions = <20 32>;
+            bindings = <&kp STAR>;
+        };
+
+        combo_amps {
+            key-positions = <21 33>;
+            bindings = <&kp AMPS>;
+        };
+
+        combo_grave {
+            key-positions = <25 37>;
+            bindings = <&kp GRAVE>;
+        };
+
+        combo_bslh {
+            key-positions = <26 38>;
+            bindings = <&kp BSLH>;
+        };
+
+        combo_equal {
+            key-positions = <27 39>;
+            bindings = <&kp EQUAL>;
+        };
+
+        combo_tilde {
+            key-positions = <28 40>;
+            bindings = <&kp TILDE>;
+        };
+
+        combo_under {
+            key-positions = <30 42>;
+            bindings = <&kp UNDER>;
+        };
+
+        combo_minus {
+            key-positions = <31 43>;
+            bindings = <&kp MINUS>;
+        };
+
+        combo_fslh {
+            key-positions = <32 44>;
+            bindings = <&kp FSLH>;
+        };
+
+        combo_pipe {
+            key-positions = <33 45>;
+            bindings = <&kp PIPE>;
+        };
+
+        combo_enter_left {
+            key-positions = <26 27 28>;
+            bindings = <&kp ENTER>;
+        };
+
+        combo_enter_right {
+            key-positions = <31 32 33>;
+            bindings = <&kp ENTER>;
+        };
+    };
+};

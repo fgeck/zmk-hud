@@ -29,6 +29,10 @@ struct Binding {
     var raw: String
     
     var displayLabel: String {
+        displayLabel(with: [:])
+    }
+    
+    func displayLabel(with customLabels: [String: String]) -> String {
         switch type {
         case .keyPress(let key):
             return key
@@ -41,12 +45,18 @@ struct Binding {
         case .holdTap(_, let tap):
             return tap
         case .tapDance(let name):
-            return name
+            if let custom = customLabels[name] {
+                return custom
+            }
+            return formatTapDanceName(name)
         case .transparent:
             return ""
         case .none:
             return ""
         case .custom(let raw):
+            if let custom = customLabels[raw] {
+                return custom
+            }
             return raw
         }
     }
@@ -62,6 +72,33 @@ struct Binding {
         default:
             return nil
         }
+    }
+    
+    private func formatTapDanceName(_ name: String) -> String {
+        let key = name
+            .replacingOccurrences(of: "td_", with: "")
+            .replacingOccurrences(of: "TD_", with: "")
+        
+        let specialMappings: [String: String] = [
+            "semi": ";",
+            "comma": ",",
+            "dot": ".",
+            "slash": "/",
+            "fslh": "/",
+            "sqt": "'",
+            "apos": "'",
+            "dqt": "\"",
+            "lbkt": "[",
+            "rbkt": "]",
+            "lbrc": "{",
+            "rbrc": "}"
+        ]
+        
+        if let mapped = specialMappings[key.lowercased()] {
+            return mapped
+        }
+        
+        return key.uppercased()
     }
 }
 

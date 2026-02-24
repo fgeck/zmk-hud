@@ -29,6 +29,18 @@ class KeyboardSimulator {
     }
     
     func startMonitoring() {
+        // Check for accessibility permissions
+        let trusted = AXIsProcessTrusted()
+        if !trusted {
+            print("KeyboardSimulator: ⚠️ Accessibility permission required!")
+            print("Go to System Settings → Privacy & Security → Accessibility → Enable ZMKHud")
+            
+            // Prompt user to grant permission
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
+            AXIsProcessTrustedWithOptions(options as CFDictionary)
+            return
+        }
+        
         eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             self?.handleKeyDown(event)
         }
@@ -37,7 +49,7 @@ class KeyboardSimulator {
             self?.handleFlagsChanged(event)
         }
         
-        print("KeyboardSimulator: Test mode active (Hyper = Ctrl+Option+Shift+Cmd)")
+        print("KeyboardSimulator: Test mode active (Fn + 1-5 for layers)")
     }
     
     func stopMonitoring() {
@@ -53,8 +65,8 @@ class KeyboardSimulator {
     
     private func handleFlagsChanged(_ event: NSEvent) {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        let hyperFlags: NSEvent.ModifierFlags = [.control, .option, .shift, .command]
-        hyperPressed = flags.contains(hyperFlags)
+        // Fn key is represented by the .function flag
+        hyperPressed = flags.contains(.function)
     }
     
     private func handleKeyDown(_ event: NSEvent) {

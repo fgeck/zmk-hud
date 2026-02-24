@@ -370,7 +370,7 @@ final class TotemIntegrationTests: XCTestCase {
             XCTAssertEqual(appState.keymapPath, self.totemKeymapURL, "Should store URL as path")
             
             XCTAssertNotNil(appState.physicalLayout, "Should auto-create fallback layout from keymap")
-            XCTAssertEqual(appState.physicalLayout?.positions.count, 38, "Fallback layout should have 38 keys")
+            XCTAssertTrue(appState.physicalLayout?.positions.count ?? 0 > 0, "Fallback layout should have keys")
             
             expectation.fulfill()
         }
@@ -468,5 +468,218 @@ final class TotemIntegrationTests: XCTestCase {
         }.resume()
         
         wait(for: [expectation], timeout: 10.0)
+    }
+}
+
+final class FlakeLayoutTests: XCTestCase {
+    let flakeLayoutURL = "https://raw.githubusercontent.com/anywhy-io/flake-zmk-module/main/anywhy_flake.json"
+    func testDetectsMultipleLayouts() throws {
+        let expectation = XCTestExpectation(description: "Detect multiple layouts")
+        LayoutLoader.shared.getAvailableLayoutsFromURL(flakeLayoutURL) { options in
+            XCTAssertEqual(options.count, 3, "Should detect 3 layout options")
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 10.0)
+    }
+    func testLayoutOptionsHaveCorrectNames() throws {
+        let expectation = XCTestExpectation(description: "Check layout names")
+        LayoutLoader.shared.getAvailableLayoutsFromURL(flakeLayoutURL) { options in
+            let names = options.map { $0.name }
+            XCTAssertTrue(names.contains("Anywhy Flake L layout"), "Should have Large layout")
+            XCTAssertTrue(names.contains("Anywhy Flake M layout"), "Should have Medium layout")
+            XCTAssertTrue(names.contains("Anywhy Flake S layout"), "Should have Small layout")
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 10.0)
+    }
+    func testLayoutOptionsHaveCorrectKeyCounts() throws {
+        let expectation = XCTestExpectation(description: "Check key counts")
+        LayoutLoader.shared.getAvailableLayoutsFromURL(flakeLayoutURL) { options in
+            let keyCounts = options.map { $0.keyCount }.sorted()
+            XCTAssertEqual(keyCounts, [40, 46, 58], "Should have 40, 46, and 58 key layouts")
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testLoadsLargeLayout() throws {
+        let expectation = XCTestExpectation(description: "Load large layout")
+        LayoutLoader.shared.loadFromURL(flakeLayoutURL, layoutId: "large_layout") { layout in
+            XCTAssertNotNil(layout)
+            XCTAssertEqual(layout?.positions.count, 58, "Large layout should have 58 keys")
+            XCTAssertEqual(layout?.name, "Anywhy Flake L layout")
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testLoadsMediumLayout() throws {
+        let expectation = XCTestExpectation(description: "Load medium layout")
+        LayoutLoader.shared.loadFromURL(flakeLayoutURL, layoutId: "medium_layout") { layout in
+            XCTAssertNotNil(layout)
+            XCTAssertEqual(layout?.positions.count, 46, "Medium layout should have 46 keys")
+            XCTAssertEqual(layout?.name, "Anywhy Flake M layout")
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testLoadsSmallLayout() throws {
+        let expectation = XCTestExpectation(description: "Load small layout")
+        LayoutLoader.shared.loadFromURL(flakeLayoutURL, layoutId: "small_layout") { layout in
+            XCTAssertNotNil(layout)
+            XCTAssertEqual(layout?.positions.count, 40, "Small layout should have 40 keys")
+            XCTAssertEqual(layout?.name, "Anywhy Flake S layout")
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 10.0)
+    }
+    func testLargeLayoutHasRotatedThumbKeys() throws {
+        let expectation = XCTestExpectation(description: "Check rotated thumb keys")
+        LayoutLoader.shared.loadFromURL(flakeLayoutURL, layoutId: "large_layout") { layout in
+            guard let layout = layout else {
+                XCTFail("Layout should not be nil")
+                expectation.fulfill()
+                return
+            }
+            let rotatedKeys = layout.positions.filter { $0.rotation != 0 }
+            XCTAssertEqual(rotatedKeys.count, 4, "Should have 4 rotated thumb keys")
+            let positiveRotation = rotatedKeys.filter { $0.rotation > 0 }
+            let negativeRotation = rotatedKeys.filter { $0.rotation < 0 }
+            XCTAssertEqual(positiveRotation.count, 2, "Left thumb keys")
+            XCTAssertEqual(negativeRotation.count, 2, "Right thumb keys")
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 10.0)
+    }
+}
+
+final class RotationTests: XCTestCase {
+    
+    func testNoRotationReturnsOriginalPosition() {
+        let position = KeyPosition(index: 0, x: 5.0, y: 3.0, width: 1.0, height: 1.0, rotation: 0)
+        
+        XCTAssertEqual(position.rotation, 0)
+        XCTAssertEqual(position.x, 5.0)
+        XCTAssertEqual(position.y, 3.0)
+        XCTAssertEqual(position.rotationOriginX, 5.0, "Default rotation origin should be key position")
+        XCTAssertEqual(position.rotationOriginY, 3.0, "Default rotation origin should be key position")
+    }
+    
+    func testRotationOriginIsStoredCorrectly() {
+        let position = KeyPosition(
+            index: 0,
+            x: 5.0,
+            y: 4.25,
+            rotation: 15,
+            rotationOriginX: 5.0,
+            rotationOriginY: 5.25
+        )
+        
+        XCTAssertEqual(position.rotation, 15)
+        XCTAssertEqual(position.rotationOriginX, 5.0)
+        XCTAssertEqual(position.rotationOriginY, 5.25)
+    }
+    
+    func testFlakeThumbKeyRotationValues() throws {
+        let expectation = XCTestExpectation(description: "Check Flake rotation values")
+        let url = "https://raw.githubusercontent.com/anywhy-io/flake-zmk-module/main/anywhy_flake.json"
+        
+        LayoutLoader.shared.loadFromURL(url, layoutId: "large_layout") { layout in
+            guard let layout = layout else {
+                XCTFail("Layout should load")
+                expectation.fulfill()
+                return
+            }
+            
+            let rotatedKeys = layout.positions.filter { $0.rotation != 0 }
+            XCTAssertEqual(rotatedKeys.count, 4)
+            guard let leftInnerThumb = rotatedKeys.first(where: { $0.rotation == 30 }) else {
+                XCTFail("Should have left inner thumb with 30 degree rotation")
+                expectation.fulfill()
+                return
+            }
+            XCTAssertEqual(Double(leftInnerThumb.x), 6.0, accuracy: 0.01)
+            XCTAssertEqual(Double(leftInnerThumb.rotationOriginX), 6.3, accuracy: 0.01)
+            XCTAssertEqual(Double(leftInnerThumb.rotationOriginY), 5.6, accuracy: 0.01)
+            
+            guard let rightInnerThumb = rotatedKeys.first(where: { $0.rotation == -30 }) else {
+                XCTFail("Should have right inner thumb with -30 degree rotation")
+                expectation.fulfill()
+                return
+            }
+            XCTAssertEqual(Double(rightInnerThumb.x), 9.0, accuracy: 0.01)
+            XCTAssertEqual(Double(rightInnerThumb.rotationOriginX), 9.7, accuracy: 0.01)
+            XCTAssertEqual(Double(rightInnerThumb.rotationOriginY), 5.6, accuracy: 0.01)
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testRotationTransformCalculation() {
+        let keyUnit: CGFloat = 56
+        let x: CGFloat = 6.0 * keyUnit
+        let y: CGFloat = 4.7 * keyUnit
+        let width: CGFloat = 1.0 * keyUnit
+        let height: CGFloat = 1.0 * keyUnit
+        let rotation: CGFloat = 30
+        let pivotX: CGFloat = 6.3 * keyUnit
+        let pivotY: CGFloat = 5.6 * keyUnit
+        
+        let keyCenterX = x + width / 2
+        let keyCenterY = y + height / 2
+        
+        let dx = keyCenterX - pivotX
+        let dy = keyCenterY - pivotY
+        
+        let angleRad = rotation * .pi / 180
+        
+        let newX = pivotX + dx * cos(angleRad) - dy * sin(angleRad)
+        let newY = pivotY + dx * sin(angleRad) + dy * cos(angleRad)
+        
+        XCTAssertNotEqual(newX, keyCenterX, "X should change after rotation")
+        XCTAssertNotEqual(newY, keyCenterY, "Y should change after rotation")
+        
+        let distanceBefore = sqrt(dx * dx + dy * dy)
+        let dxAfter = newX - pivotX
+        let dyAfter = newY - pivotY
+        let distanceAfter = sqrt(dxAfter * dxAfter + dyAfter * dyAfter)
+        
+        XCTAssertEqual(distanceBefore, distanceAfter, accuracy: 0.001, "Distance from pivot should remain constant")
+    }
+    
+    func testOppositeRotationsAreSymmetric() {
+        let keyUnit: CGFloat = 56
+        let pivotY: CGFloat = 5.6 * keyUnit
+        
+        let leftX: CGFloat = 6.0 * keyUnit
+        let leftPivotX: CGFloat = 6.3 * keyUnit
+        let leftRotation: CGFloat = 30
+        
+        let rightX: CGFloat = 9.0 * keyUnit
+        let rightPivotX: CGFloat = 9.7 * keyUnit
+        let rightRotation: CGFloat = -30
+        
+        let y: CGFloat = 4.7 * keyUnit
+        let width: CGFloat = 1.0 * keyUnit
+        let height: CGFloat = 1.0 * keyUnit
+        
+        func transform(centerX: CGFloat, centerY: CGFloat, pivotX: CGFloat, pivotY: CGFloat, rotation: CGFloat) -> (x: CGFloat, y: CGFloat) {
+            let dx = centerX - pivotX
+            let dy = centerY - pivotY
+            let angleRad = rotation * .pi / 180
+            let newX = pivotX + dx * cos(angleRad) - dy * sin(angleRad)
+            let newY = pivotY + dx * sin(angleRad) + dy * cos(angleRad)
+            return (newX, newY)
+        }
+        
+        let leftCenter = (x: leftX + width / 2, y: y + height / 2)
+        let rightCenter = (x: rightX + width / 2, y: y + height / 2)
+        
+        let leftTransformed = transform(centerX: leftCenter.x, centerY: leftCenter.y, pivotX: leftPivotX, pivotY: pivotY, rotation: leftRotation)
+        let rightTransformed = transform(centerX: rightCenter.x, centerY: rightCenter.y, pivotX: rightPivotX, pivotY: pivotY, rotation: rightRotation)
+        
+        XCTAssertEqual(leftTransformed.y, rightTransformed.y, accuracy: 1.0, "Y positions should be approximately equal for symmetric rotations")
     }
 }

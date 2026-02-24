@@ -39,6 +39,8 @@ struct KeyView: View {
     let binding: Binding
     let position: ScaledKeyPosition
     let isPressed: Bool
+    var customLabels: [String: String] = [:]
+    var tapDanceShifted: [String: String] = [:]
     
     @Environment(\.colorScheme) var colorScheme
     
@@ -51,14 +53,23 @@ struct KeyView: View {
                         .stroke(strokeColor, lineWidth: 1)
                 )
             
-            VStack(spacing: 2) {
+            VStack(spacing: 1) {
+                // Shifted/double-tap label for tap-dance (purple, smaller, at top)
+                if let shiftedLabel = shiftedLabel {
+                    Text(shiftedLabel)
+                        .font(.system(size: 9))
+                        .foregroundColor(tapDanceShiftedColor)
+                }
+                
+                // Hold label (for home-row mods)
                 if let holdLabel = binding.holdLabel {
                     Text(holdLabel)
                         .font(.system(size: 9))
                         .foregroundColor(holdColor)
                 }
                 
-                Text(binding.displayLabel)
+                // Main tap label
+                Text(binding.displayLabel(with: customLabels))
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundColor(textColor)
                     .lineLimit(1)
@@ -67,6 +78,21 @@ struct KeyView: View {
             .padding(4)
         }
         .frame(width: position.width, height: position.height)
+    }
+    
+    /// Returns the shifted/double-tap label for tap-dance keys or hold-tap with embedded tap-dance
+    private var shiftedLabel: String? {
+        switch binding.type {
+        case .tapDance(let name):
+            return tapDanceShifted[name]
+        case .holdTap(_, let tap):
+            // Check if tap label matches a tap-dance shifted entry (e.g., "A" -> td_a -> "ä")
+            // Look for td_X where X matches the tap label
+            let tdName = "td_" + tap.lowercased()
+            return tapDanceShifted[tdName]
+        default:
+            return nil
+        }
     }
     
     private var backgroundColor: Color {
@@ -79,10 +105,16 @@ struct KeyView: View {
             return colorScheme == .dark ? KeyColors.transparentDark : KeyColors.transparent
         case .layerMomentary, .layerTap:
             return colorScheme == .dark ? KeyColors.layerActivatorDark : KeyColors.layerActivator
-        case .holdTap, .modTap:
-            return colorScheme == .dark ? KeyColors.homeRowModDark : KeyColors.homeRowMod
+        case .holdTap(let hold, _), .modTap(let hold, _):
+            // Only use blue background for actual home-row mods (single modifier symbols)
+            let modifierSymbols = ["⌘", "⌥", "⌃", "⇧"]
+            if modifierSymbols.contains(hold) {
+                return colorScheme == .dark ? KeyColors.homeRowModDark : KeyColors.homeRowMod
+            }
+            return colorScheme == .dark ? KeyColors.defaultKeyDark : KeyColors.defaultKey
         case .tapDance:
-            return colorScheme == .dark ? KeyColors.tapDanceDark : KeyColors.tapDance
+            // Tap-dance keys use default background (no special color)
+            return colorScheme == .dark ? KeyColors.defaultKeyDark : KeyColors.defaultKey
         default:
             return colorScheme == .dark ? KeyColors.defaultKeyDark : KeyColors.defaultKey
         }
@@ -101,6 +133,10 @@ struct KeyView: View {
     
     private var holdColor: Color {
         colorScheme == .dark ? KeyColors.holdTextDark : KeyColors.holdText
+    }
+    
+    private var tapDanceShiftedColor: Color {
+        colorScheme == .dark ? KeyColors.tapDanceDark : KeyColors.tapDance
     }
 }
 

@@ -20,10 +20,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var hidManager: HIDManager?
     var keyboardSimulator: KeyboardSimulator?
     var testModeMenuItem: NSMenuItem?
+    var settingsWindow: NSWindow?
+    var globalHotkeyMonitor: Any?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMenuBar()
         setupHIDManager()
+        setupGlobalHotkey()
         NSApp.setActivationPolicy(.accessory)
     }
     
@@ -55,6 +58,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupHIDManager() {
         hidManager = HIDManager(appState: appState)
         hidManager?.startMonitoring()
+    }
+    
+    private func setupGlobalHotkey() {
+        globalHotkeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "h" {
+                DispatchQueue.main.async {
+                    self?.toggleHUD()
+                }
+            }
+        }
+    }
+    
+    @objc func toggleHUD() {
+        if appState.hudVisible {
+            hideHUD()
+        } else {
+            showHUD()
+        }
     }
     
     
@@ -91,8 +112,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc func openSettings() {
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        if let window = settingsWindow, window.isVisible {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        
+        settingsWindow = createSettingsWindow()
+        settingsWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+    
+    private func createSettingsWindow() -> NSWindow {
+        let settingsView = SettingsView().environmentObject(appState)
+        let hostingController = NSHostingController(rootView: settingsView)
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "ZMK HUD Settings"
+        window.styleMask = [.titled, .closable]
+        window.setContentSize(NSSize(width: 450, height: 480))
+        window.center()
+        window.isReleasedWhenClosed = false
+        return window
     }
     
     @objc func quit() {

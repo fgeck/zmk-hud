@@ -224,6 +224,10 @@ enum KeymapParser {
             let key = parts.count > 1 ? parts[1] : ""
             return Binding(type: .keyPress(formatKey(key)), raw: rawCode)
             
+        case "sk":  // Sticky key
+            let mod = parts.count > 1 ? parts[1] : ""
+            return Binding(type: .keyPress(formatModifier(mod)), raw: rawCode)
+            
         case "lt":
             guard parts.count >= 3, let layer = Int(parts[1]) else {
                 return Binding(type: .custom(rawCode), raw: rawCode)
@@ -249,19 +253,43 @@ enum KeymapParser {
             return Binding(type: .none, raw: rawCode)
             
         default:
+            // Tap-dance behaviors
             if behavior.hasPrefix("td_") || behavior.hasPrefix("TD_") {
                 return Binding(type: .tapDance(behavior), raw: rawCode)
             }
-            if behavior.lowercased().contains("hm") || behavior.lowercased().contains("mt") {
+            
+            // Nav behaviors (nav_left, nav_right, nav_up, nav_down, nav_bspc, nav_del)
+            if behavior.hasPrefix("nav_") {
                 if parts.count >= 3 {
-                    return Binding(type: .holdTap(formatModifier(parts[1]), formatKey(parts[2])), raw: rawCode)
+                    let holdKey = parts[1]  // e.g., LG(LEFT)
+                    let tapKey = parts[2]   // e.g., LEFT
+                    return Binding(type: .holdTap(formatKey(holdKey), formatKey(tapKey)), raw: rawCode)
                 }
             }
+            
+            // Home-row mods (hml, hmr, hml_td_a, hmr_td_semi, etc.)
+            if behavior.lowercased().contains("hm") || behavior.lowercased().contains("mt") {
+                if parts.count >= 3 {
+                    // Check if behavior name contains embedded tap-dance (e.g., hml_td_a, hmr_td_semi)
+                    let tapLabel: String
+                    if let tdRange = behavior.range(of: "td_", options: .caseInsensitive) {
+                        // Extract the tap-dance name from behavior (e.g., "td_a" from "hml_td_a")
+                        let tdName = String(behavior[tdRange.lowerBound...])
+                        tapLabel = formatTapDanceLabel(tdName)
+                    } else {
+                        tapLabel = formatKey(parts[2])
+                    }
+                    return Binding(type: .holdTap(formatModifier(parts[1]), tapLabel), raw: rawCode)
+                }
+            }
+            
+            // Layer-tap variants
             if behavior.lowercased().contains("lt") {
                 if parts.count >= 3, let layer = Int(parts[1]) {
                     return Binding(type: .layerTap(layer, formatKey(parts[2])), raw: rawCode)
                 }
             }
+            
             return Binding(type: .custom(rawCode), raw: rawCode)
         }
     }
@@ -388,8 +416,61 @@ enum KeymapParser {
         return [:]
     }
     
+    private static func formatTapDanceLabel(_ name: String) -> String {
+        let key = name
+            .replacingOccurrences(of: "td_", with: "")
+            .replacingOccurrences(of: "TD_", with: "")
+        
+        let specialMappings: [String: String] = [
+            "semi": ";",
+            "comma": ",",
+            "dot": ".",
+            "slash": "/",
+            "fslh": "/",
+            "sqt": "'",
+            "apos": "'",
+            "dqt": "\"",
+            "lbkt": "[",
+            "rbkt": "]",
+            "lbrc": "{",
+            "rbrc": "}"
+        ]
+        
+        if let mapped = specialMappings[key.lowercased()] {
+            return mapped
+        }
+        
+        return key.uppercased()
+    }
+    
+
     private static func formatKey(_ key: String) -> String {
+        // Handle modified keys like LG(C) -> Copy, LG(V) -> Paste, etc.
+        let clipboardShortcuts: [String: String] = [
+            "LG(C)": "Copy", "LG(V)": "Paste", "LG(X)": "Cut",
+            "LG(Z)": "Undo", "LG(LS(Z))": "Redo",
+            "LC(C)": "Copy", "LC(V)": "Paste", "LC(X)": "Cut",
+            "LC(Z)": "Undo", "LC(LS(Z))": "Redo"
+        ]
+        
+        if let shortcut = clipboardShortcuts[key] {
+            return shortcut
+        }
+        
+        // Handle modified keys like LG(LEFT) -> ⌘←
+        if key.contains("(") && key.contains(")") {
+            if let startParen = key.firstIndex(of: "("),
+               let endParen = key.lastIndex(of: ")") {
+                let modPart = String(key[..<startParen])
+                let keyPart = String(key[key.index(after: startParen)..<endParen])
+                let formattedMod = formatModifier(modPart)
+                let formattedKey = formatKey(keyPart)  // Recursive call for nested keys
+                return "\(formattedMod)\(formattedKey)"
+            }
+        }
+        
         let specialKeys: [String: String] = [
+            // Navigation
             "BACKSPACE": "⌫", "BSPC": "⌫",
             "SPACE": "␣", "SPC": "␣",
             "TAB": "⇥",
@@ -397,6 +478,8 @@ enum KeymapParser {
             "ESCAPE": "ESC", "ESC": "ESC",
             "DELETE": "DEL", "DEL": "DEL",
             "LEFT": "←", "RIGHT": "→", "UP": "↑", "DOWN": "↓",
+            
+            // Punctuation
             "SEMICOLON": ";", "SEMI": ";",
             "COMMA": ",", "DOT": ".", "PERIOD": ".",
             "SLASH": "/", "FSLH": "/",
@@ -419,8 +502,25 @@ enum KeymapParser {
             "STAR": "*", "ASTRK": "*",
             "UNDER": "_", "UNDERSCORE": "_",
             "PIPE": "|",
+            
+            // Numbers
             "N0": "0", "N1": "1", "N2": "2", "N3": "3", "N4": "4",
-            "N5": "5", "N6": "6", "N7": "7", "N8": "8", "N9": "9"
+            "N5": "5", "N6": "6", "N7": "7", "N8": "8", "N9": "9",
+            
+            // Media controls
+            "C_VOL_UP": "🔊", "C_VOLUME_UP": "🔊",
+            "C_VOL_DN": "🔉", "C_VOLUME_DOWN": "🔉",
+            "C_MUTE": "🔇",
+            "C_NEXT": "⏭", "C_PREV": "⏮",
+            "C_PP": "⏯", "C_PLAY_PAUSE": "⏯",
+            "C_STOP": "⏹",
+            
+            // Brightness
+            "C_BRI_UP": "☀️", "C_BRIGHTNESS_INC": "☀️",
+            "C_BRI_DN": "🌙", "C_BRIGHTNESS_DEC": "🌙",
+            
+            // Power
+            "C_PWR": "⏻", "C_POWER": "⏻"
         ]
         
         let upperKey = key.uppercased()

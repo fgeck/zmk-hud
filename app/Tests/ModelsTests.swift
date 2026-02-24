@@ -41,7 +41,7 @@ final class ModelsTests: XCTestCase {
     func testBindingDisplayLabelForTapDance() {
         let binding = Binding(type: .tapDance("td_a"), raw: "&td_a")
         
-        XCTAssertEqual(binding.displayLabel, "td_a")
+        XCTAssertEqual(binding.displayLabel, "A")
         XCTAssertNil(binding.holdLabel)
     }
     

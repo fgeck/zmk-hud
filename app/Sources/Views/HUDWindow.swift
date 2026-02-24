@@ -59,8 +59,9 @@ struct HUDContentView: View {
     
     var body: some View {
         HStack(spacing: 16) {
+            LeftComboPanel()
             KeyboardView()
-            ComboPanel()
+            RightComboPanel()
         }
         .padding(20)
         .background(
