@@ -18,7 +18,7 @@
  *
  * Key Press:
  *   [0] = 0x02 (MSG_KEY_PRESS)
- *   [1] = key_position (0-255)
+ *   [1] = keycode (HID usage code, 0-255)
  *   [2] = is_pressed (0/1)
  *   [3] = modifier_flags (ctrl=1, shift=2, alt=4, gui=8)
  *   [4-31] = reserved (0)
