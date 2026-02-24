@@ -143,13 +143,23 @@ struct LayerHeader: View {
     let isConnected: Bool
     let testMode: Bool
     
+    @State private var isAnimating = false
+    
     var body: some View {
         HStack(spacing: 12) {
-            // Connection status
+            // Connection status with pulse animation
             HStack(spacing: 6) {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 8, height: 8)
+                ZStack {
+                    Circle()
+                        .fill(statusColor.opacity(0.3))
+                        .frame(width: 12, height: 12)
+                        .scaleEffect(isAnimating && isConnected ? 1.5 : 1.0)
+                        .opacity(isAnimating && isConnected ? 0 : 1)
+                    
+                    Circle()
+                        .fill(statusColor)
+                        .frame(width: 8, height: 8)
+                }
                 Text(statusText)
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -157,20 +167,21 @@ struct LayerHeader: View {
             
             Spacer()
             
-            // Layer indicator
+            // Layer indicator with animation
             HStack(spacing: 8) {
-                Image(systemName: "square.3.layers.3d")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.accentColor)
+                layerIcon
                 
                 Text(layerName)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
+                    .id(layerName) // Force view update on layer change
                 
                 Text("(\(layerIndex + 1)/\(totalLayers))")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .monospacedDigit()
             }
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: layerIndex)
             
             Spacer()
             
@@ -187,10 +198,17 @@ struct LayerHeader: View {
                 .padding(.vertical, 4)
                 .background(Color.orange.opacity(0.15))
                 .clipShape(Capsule())
+                .transition(.scale.combined(with: .opacity))
             }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
+        .animation(.easeInOut(duration: 0.2), value: testMode)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                isAnimating = true
+            }
+        }
     }
     
     private var statusColor: Color {
@@ -201,6 +219,20 @@ struct LayerHeader: View {
     private var statusText: String {
         if testMode { return "Test Mode" }
         return isConnected ? "Connected" : "Disconnected"
+    }
+    
+    @ViewBuilder
+    private var layerIcon: some View {
+        if #available(macOS 14.0, *) {
+            Image(systemName: "square.3.layers.3d")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.accentColor)
+                .symbolEffect(.bounce, value: layerIndex)
+        } else {
+            Image(systemName: "square.3.layers.3d")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.accentColor)
+        }
     }
 }
 

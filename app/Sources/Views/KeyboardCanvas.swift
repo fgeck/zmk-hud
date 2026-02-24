@@ -10,6 +10,7 @@ struct KeyboardCanvas: View {
     let currentLayer: Int
     
     @Environment(\.colorScheme) private var systemColorScheme
+    @State private var animatedPressedKeys: Set<Int> = []
     
     /// Key dimensions from config
     var keyCornerRadius: Double = 6
@@ -23,6 +24,12 @@ struct KeyboardCanvas: View {
             }
         }
         .frame(width: layout.width + 20, height: layout.height + 20)
+        .animation(.easeOut(duration: 0.15), value: pressedKeys)
+        .onChange(of: pressedKeys) { newKeys in
+            withAnimation(.easeOut(duration: 0.08)) {
+                animatedPressedKeys = newKeys
+            }
+        }
     }
     
     private func drawKey(context: inout GraphicsContext, key: PhysicalKey) {
