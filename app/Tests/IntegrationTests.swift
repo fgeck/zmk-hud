@@ -149,6 +149,48 @@ final class IntegrationTests: XCTestCase {
         XCTAssertEqual(appState.keymapPath, keymapPath, "AppState should store the keymap path")
         XCTAssertEqual(appState.keymap?.layers.count, 5, "Loaded keymap should have 5 layers")
     }
+    
+    func testFlakeKeymapHasRowStructure() throws {
+        let content = try String(contentsOfFile: keymapPath, encoding: .utf8)
+        let keymap = KeymapParser.parse(from: content)
+        
+        XCTAssertNotNil(keymap?.rowStructure, "Flake keymap should have row structure")
+        XCTAssertEqual(keymap?.rowStructure?.count, 5, "Flake should have 5 rows")
+        
+        let totalKeys = keymap?.rowStructure?.reduce(0, +) ?? 0
+        XCTAssertEqual(totalKeys, 58, "Row structure should sum to 58 keys")
+    }
+    
+    func testFlakeFallbackLayoutFromRowStructure() throws {
+        let appState = AppState()
+        appState.loadKeymapFromFile(keymapPath)
+        
+        XCTAssertNotNil(appState.physicalLayout, "Should create fallback layout")
+        XCTAssertEqual(appState.physicalLayout?.positions.count, 58, "Fallback should have 58 positions")
+        XCTAssertTrue(appState.physicalLayout?.name.contains("Fallback") ?? false, "Should be named as fallback")
+    }
+    
+    func testFlakeFallbackLayoutMatchesRowStructure() throws {
+        let content = try String(contentsOfFile: keymapPath, encoding: .utf8)
+        let keymap = KeymapParser.parse(from: content)
+        
+        guard let rowStructure = keymap?.rowStructure else {
+            XCTFail("No row structure")
+            return
+        }
+        
+        let layout = LayoutLoader.shared.createFallbackFromRowStructure(rowStructure)
+        
+        var expectedIndex = 0
+        for (row, cols) in rowStructure.enumerated() {
+            for col in 0..<cols {
+                let pos = layout.positions[expectedIndex]
+                XCTAssertEqual(Int(pos.x), col, "Key \(expectedIndex) should be at column \(col)")
+                XCTAssertEqual(Int(pos.y), row, "Key \(expectedIndex) should be at row \(row)")
+                expectedIndex += 1
+            }
+        }
+    }
 }
 
 final class TotemIntegrationTests: XCTestCase {
@@ -363,4 +405,66 @@ final class TotemIntegrationTests: XCTestCase {
         
         wait(for: [expectation], timeout: 10.0)
     }
+    
+    func testTotemKeymapHasRowStructure() throws {
+        let expectation = XCTestExpectation(description: "Totem row structure")
+        
+        guard let url = URL(string: totemKeymapURL) else {
+            XCTFail("Invalid URL")
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            defer { expectation.fulfill() }
+            
+            guard let data = data, let content = String(data: data, encoding: .utf8) else {
+                XCTFail("Failed to fetch")
+                return
+            }
+            
+            let keymap = KeymapParser.parse(from: content)
+            
+            XCTAssertNotNil(keymap?.rowStructure, "Totem keymap should have row structure")
+            
+            let totalKeys = keymap?.rowStructure?.reduce(0, +) ?? 0
+            XCTAssertEqual(totalKeys, 38, "Row structure should sum to 38 keys")
+        }.resume()
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testTotemFallbackLayoutFromRowStructure() throws {
+        let expectation = XCTestExpectation(description: "Totem fallback layout")
+        
+        guard let url = URL(string: totemKeymapURL) else {
+            XCTFail("Invalid URL")
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            defer { expectation.fulfill() }
+            
+            guard let data = data, let content = String(data: data, encoding: .utf8) else {
+                XCTFail("Failed to fetch")
+                return
+            }
+            
+            let keymap = KeymapParser.parse(from: content)
+            
+            guard let rowStructure = keymap?.rowStructure else {
+                XCTFail("No row structure")
+                return
+            }
+            
+            let layout = LayoutLoader.shared.createFallbackFromRowStructure(rowStructure)
+            
+            XCTAssertEqual(layout.positions.count, 38, "Fallback should have 38 positions")
+            XCTAssertTrue(layout.name.contains("Fallback"), "Should be named as fallback")
+            XCTAssertGreaterThan(layout.layoutSize.width, 0, "Should have positive width")
+            XCTAssertGreaterThan(layout.layoutSize.height, 0, "Should have positive height")
+        }.resume()
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+
 }
