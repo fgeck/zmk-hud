@@ -280,7 +280,7 @@ struct ComboRow: View {
     }
     
     private func formatKeyName(_ key: String) -> String {
-        var result = key
+        let result = key
             .removingPrefix("KP_")
             .removingPrefix("K_")
         

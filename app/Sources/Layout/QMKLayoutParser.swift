@@ -24,10 +24,15 @@ struct QMKLayoutParser {
     
     /// Parse QMK info.json data into a PhysicalLayout.
     static func parse(data: Data, keySize: Double = 56, layoutName: String? = nil) -> PhysicalLayout? {
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return nil
+        // Try parsing as dictionary first
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            return parse(json: json, keySize: keySize, layoutName: layoutName)
         }
-        return parse(json: json, keySize: keySize, layoutName: layoutName)
+        // Format 3: Direct array [...] at root level
+        if let directArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+            return parseKeys(directArray, keySize: keySize)
+        }
+        return nil
     }
     
     /// Parse QMK info.json dictionary into a PhysicalLayout.
@@ -50,10 +55,7 @@ struct QMKLayoutParser {
         else if let layout = json["layout"] as? [[String: Any]] {
             layoutArray = layout
         }
-        // Format 3: Direct array [...]
-        else if let layout = json as? [[String: Any]] {
-            layoutArray = layout
-        }
+        // Format 3 (direct array) is handled in parse(data:) above
         
         guard let keys = layoutArray else { return nil }
         

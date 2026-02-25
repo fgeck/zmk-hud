@@ -22,7 +22,10 @@ let package = Package(
         .testTarget(
             name: "ZMKHudTests",
             dependencies: ["ZMKHud"],
-            path: "Tests"
+            path: "Tests",
+            resources: [
+                .copy("Fixtures")
+            ]
         )
     ]
 )
