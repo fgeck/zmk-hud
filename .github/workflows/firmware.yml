@@ -7,19 +7,21 @@ on:
       - 'firmware/**'
       - 'zephyr/**'
       - '.github/workflows/firmware.yml'
-      - '.github/test-config/**'
+      - 'config/**'
+      - 'build.yaml'
   pull_request:
     branches: [main]
     paths:
       - 'firmware/**'
       - 'zephyr/**'
       - '.github/workflows/firmware.yml'
-      - '.github/test-config/**'
+      - 'config/**'
+      - 'build.yaml'
   workflow_dispatch:
 
 jobs:
   build:
     uses: zmkfirmware/zmk/.github/workflows/build-user-config.yml@main
     with:
-      build_matrix_path: '.github/test-config/build.yaml'
-      config_path: '.github/test-config'
+      build_matrix_path: 'build.yaml'
+      config_path: 'config'
