@@ -130,7 +130,7 @@ struct ColorScheme {
         case .homeRowMod:
             return homeRowMod
         case .tapDance:
-            return tapDance
+            return keyDefault  // Tap-dance keys use normal background
         case .layerActivator:
             return layerActivator
         case .pressed:
