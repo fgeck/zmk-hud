@@ -380,7 +380,11 @@ final class TotemIntegrationTests: XCTestCase {
     
     func testAppStateLoadsTotemKeymapFromURL() throws {
         let expectation = XCTestExpectation(description: "AppState loads Totem keymap")
-        let appState = AppState()
+        
+        // Use a temporary config directory to avoid polluting user's real config
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let tempConfigManager = ConfigManager(configDir: tempDir)
+        let appState = AppState(configManager: tempConfigManager)
         
         appState.loadKeymapFromURL(totemKeymapURL)
         
@@ -390,6 +394,9 @@ final class TotemIntegrationTests: XCTestCase {
             
             XCTAssertNotNil(appState.physicalLayout, "Should auto-create fallback layout from keymap")
             XCTAssertTrue(appState.physicalLayout?.count ?? 0 > 0, "Fallback layout should have keys")
+            
+            // Cleanup temp directory
+            try? FileManager.default.removeItem(at: tempDir)
             
             expectation.fulfill()
         }

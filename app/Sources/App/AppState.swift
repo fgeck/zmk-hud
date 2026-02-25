@@ -148,7 +148,12 @@ class AppState: ObservableObject {
             hudScale: hudScale,
             comboDisplayMode: comboDisplayMode.rawValue
         )
-        try? configManager.save(config)
+        do {
+            try configManager.save(config)
+            print("Config saved: keymap=\(keymapPath ?? "nil"), layout=\(layoutPath ?? "nil")")
+        } catch {
+            print("Failed to save config: \(error)")
+        }
     }
     
     func handleLayerChange(layer: Int, active: Bool, state: UInt16) {
@@ -453,6 +458,7 @@ class AppState: ObservableObject {
             keymapDrawerConfig = config
             keymapDrawerConfigPath = path
             applyKeymapDrawerConfig(config)
+            saveConfig()
         } catch {
             print("Failed to load keymap_drawer config: \(error)")
         }
@@ -475,6 +481,7 @@ class AppState: ObservableObject {
                     self?.keymapDrawerConfig = config
                     self?.keymapDrawerConfigPath = urlString
                     self?.applyKeymapDrawerConfig(config)
+                    self?.saveConfig()
                 }
             } catch {
                 print("Failed to parse keymap_drawer config: \(error)")

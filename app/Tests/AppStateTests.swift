@@ -4,14 +4,23 @@ import XCTest
 final class AppStateTests: XCTestCase {
     
     var appState: AppState!
+    var tempDir: URL!
     
     override func setUp() {
         super.setUp()
-        appState = AppState()
+        // Use temporary config directory to avoid affecting user's real config
+        tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let tempConfigManager = ConfigManager(configDir: tempDir)
+        appState = AppState(configManager: tempConfigManager)
     }
     
     override func tearDown() {
         appState = nil
+        // Cleanup temp directory
+        if let tempDir = tempDir {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+        tempDir = nil
         super.tearDown()
     }
     
