@@ -4,6 +4,8 @@ manifest:
       url-base: https://github.com/zmkfirmware
     - name: zzeneg
       url-base: https://github.com/zzeneg
+    - name: anywhy-io
+      url-base: https://github.com/anywhy-io
   projects:
     - name: zmk
       remote: zmkfirmware
@@ -11,6 +13,9 @@ manifest:
       import: app/west.yml
     - name: zmk-raw-hid
       remote: zzeneg
+      revision: main
+    - name: flake-zmk-module
+      remote: anywhy-io
       revision: main
   self:
     path: config
