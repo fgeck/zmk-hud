@@ -1,4 +1,16 @@
 # SPDX-License-Identifier: MIT
-# Root Kconfig that includes firmware module
 
-rsource "firmware/Kconfig"
+config ZMK_HUD
+    bool "ZMK HUD Broadcaster"
+    default n
+    depends on RAW_HID
+    depends on !ZMK_SPLIT || ZMK_SPLIT_ROLE_CENTRAL
+    help
+      Broadcasts layer state and key press events via Raw HID
+      for use with desktop HUD applications.
+
+      When enabled, the keyboard will send HID reports containing:
+      - Layer activation/deactivation events
+      - Key press/release events with position and modifier state
+
+      Requires the zmk-raw-hid module to be enabled.

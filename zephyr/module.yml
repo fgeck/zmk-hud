@@ -1,4 +1,4 @@
 name: zmk-hud
 build:
-  cmake: ..
-  kconfig: ../Kconfig
+  cmake: .
+  kconfig: Kconfig
