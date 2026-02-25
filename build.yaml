@@ -1,4 +1,4 @@
 ---
 include:
-  - board: xiao_ble//zmk
-    shield: raw_hid_adapter
+  - board: nice_nano_v2//zmk
+    shield: corne_left raw_hid_adapter
