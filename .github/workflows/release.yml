@@ -7,7 +7,6 @@ on:
 
 env:
   APP_NAME: ZMKHud
-  SCHEME: ZMKHud
 
 jobs:
   build-and-release:
@@ -22,11 +21,18 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - name: Build App
+      - name: Run Tests
+        working-directory: app
+        run: swift test
+
+      - name: Build Release
+        working-directory: app
+        run: swift build -c release
+
+      - name: Create App Bundle
         working-directory: app
         run: |
-          # Build release binary
-          swift build -c release
+          VERSION="${GITHUB_REF_NAME#v}"
           
           # Create app bundle structure
           mkdir -p "${{ env.APP_NAME }}.app/Contents/MacOS"
@@ -36,7 +42,6 @@ jobs:
           cp .build/release/${{ env.APP_NAME }} "${{ env.APP_NAME }}.app/Contents/MacOS/"
           
           # Create Info.plist
-          VERSION="${GITHUB_REF_NAME#v}"
           cat > "${{ env.APP_NAME }}.app/Contents/Info.plist" << EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -69,7 +74,7 @@ jobs:
           EOF
 
       - name: Import Code Signing Certificate
-        if: env.CERTIFICATE_BASE64 != ''
+        if: ${{ secrets.CERTIFICATE_BASE64 != '' }}
         env:
           CERTIFICATE_BASE64: ${{ secrets.CERTIFICATE_BASE64 }}
           CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
@@ -91,7 +96,7 @@ jobs:
             -s -k "" $KEYCHAIN_PATH
 
       - name: Sign App
-        if: env.DEVELOPER_ID != ''
+        if: ${{ secrets.DEVELOPER_ID != '' }}
         env:
           DEVELOPER_ID: ${{ secrets.DEVELOPER_ID }}
         working-directory: app
@@ -117,7 +122,7 @@ jobs:
             "zmk-hud.dmg"
 
       - name: Notarize DMG
-        if: env.APPLE_ID != ''
+        if: ${{ secrets.APPLE_ID != '' }}
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
@@ -132,7 +137,7 @@ jobs:
           
           xcrun stapler staple zmk-hud.dmg
 
-      - name: Create ZIP (unsigned fallback)
+      - name: Create ZIP
         working-directory: app
         run: |
           zip -r "zmk-hud.zip" "${{ env.APP_NAME }}.app"
@@ -141,10 +146,8 @@ jobs:
         id: sha
         working-directory: app
         run: |
-          if [ -f zmk-hud.dmg ]; then
-            SHA256_DMG=$(shasum -a 256 zmk-hud.dmg | awk '{print $1}')
-            echo "sha256_dmg=${SHA256_DMG}" >> $GITHUB_OUTPUT
-          fi
+          SHA256_DMG=$(shasum -a 256 zmk-hud.dmg | awk '{print $1}')
+          echo "sha256_dmg=${SHA256_DMG}" >> $GITHUB_OUTPUT
           SHA256_ZIP=$(shasum -a 256 zmk-hud.zip | awk '{print $1}')
           echo "sha256_zip=${SHA256_ZIP}" >> $GITHUB_OUTPUT
 
@@ -154,7 +157,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -182,10 +185,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update Homebrew Cask
-        if: env.HOMEBREW_TAP_TOKEN != ''
         env:
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
+          if [ -z "$HOMEBREW_GITHUB_API_TOKEN" ]; then
+            echo "HOMEBREW_TAP_TOKEN not set, skipping Cask update"
+            exit 0
+          fi
+          
           VERSION="${{ steps.version.outputs.version }}"
           SHA256="${{ steps.sha.outputs.sha256_zip }}"
           
@@ -196,4 +203,4 @@ jobs:
             --sha256 "$SHA256" \
             --no-browse \
             --force \
-            fgeck/tap/zmk-hud || echo "Cask update failed - manual update may be required"
+            fgeck/tap/zmk-hud || echo "Cask auto-update failed - manual update required"
