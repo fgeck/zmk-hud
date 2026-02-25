@@ -26,7 +26,7 @@ struct ComboRenderer {
         var keyPositions: [Int]
         var result: KeyLegend
         var align: ComboAlignment = .top
-        var offset: Double = 0.5
+        var offset: Double = 0.2  // Reduced from 0.5 to keep combos closer to keys
         var dendron: DendronStyle = .auto
         var arcScale: Double = 1.0
         var slide: Double? = nil
@@ -45,7 +45,7 @@ struct ComboRenderer {
             )
         }
         
-        init(keyPositions: [Int], result: KeyLegend, align: ComboAlignment = .top, offset: Double = 0.5) {
+        init(keyPositions: [Int], result: KeyLegend, align: ComboAlignment = .top, offset: Double = 0.2) {
             self.keyPositions = keyPositions
             self.result = result
             self.align = align
@@ -260,8 +260,6 @@ struct ComboOverlayView: View {
             
             let isDark = systemColorScheme == .dark
             let dendronColor = isDark ? Color.gray : Color.gray.opacity(0.6)
-            let boxFillColor = colorScheme.combo
-            let boxStrokeColor = isDark ? Color(hex: "#60666c") : Color(hex: "#c9cccf")
             
             for combo in filteredCombos {
                 let spec = ComboRenderer.ComboSpec(from: combo, customLabels: customLabels)
@@ -278,24 +276,12 @@ struct ComboOverlayView: View {
                     }
                 }
                 
-                // Draw combo box
-                let width = spec.width ?? 28
-                let height = spec.height ?? 26
-                let boxRect = CGRect(
-                    x: comboPos.x - width / 2,
-                    y: comboPos.y - height / 2,
-                    width: width,
-                    height: height
-                )
-                let boxPath = RoundedRectangle(cornerRadius: 4).path(in: boxRect)
-                context.fill(boxPath, with: .color(boxFillColor))
-                context.stroke(boxPath, with: .color(boxStrokeColor), lineWidth: 1)
-                
-                // Draw combo label
+                // Draw combo label (no box background - just the text)
                 if let tap = spec.result.tap, !tap.isEmpty {
+                    // Draw subtle text background for readability
                     let text = Text(tap)
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundColor(colorScheme.textDefault)
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .foregroundColor(dendronColor)
                     context.draw(text, at: CGPoint(x: comboPos.x, y: comboPos.y), anchor: .center)
                 }
             }
