@@ -3,15 +3,18 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*'
 
 env:
   APP_NAME: ZMKHud
 
 jobs:
-  build-and-release:
+  release:
+    name: Build and Release
     runs-on: macos-14
-    
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,19 +32,22 @@ jobs:
         working-directory: app
         run: swift build -c release
 
+      - name: Get Version
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
       - name: Create App Bundle
         working-directory: app
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ steps.version.outputs.version }}"
           
-          # Create app bundle structure
           mkdir -p "${{ env.APP_NAME }}.app/Contents/MacOS"
           mkdir -p "${{ env.APP_NAME }}.app/Contents/Resources"
           
-          # Copy binary
           cp .build/release/${{ env.APP_NAME }} "${{ env.APP_NAME }}.app/Contents/MacOS/"
           
-          # Create Info.plist
           cat > "${{ env.APP_NAME }}.app/Contents/Info.plist" << EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -67,95 +73,30 @@ jobs:
               <true/>
               <key>NSHighResolutionCapable</key>
               <true/>
-              <key>NSSupportsAutomaticTermination</key>
-              <true/>
           </dict>
           </plist>
           EOF
 
-      - name: Import Code Signing Certificate
-        if: ${{ secrets.CERTIFICATE_BASE64 != '' }}
-        env:
-          CERTIFICATE_BASE64: ${{ secrets.CERTIFICATE_BASE64 }}
-          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
-        run: |
-          CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          
-          echo -n "$CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
-          
-          security create-keychain -p "" $KEYCHAIN_PATH
-          security set-keychain-settings $KEYCHAIN_PATH
-          security unlock-keychain -p "" $KEYCHAIN_PATH
-          security import $CERTIFICATE_PATH \
-            -P "$CERTIFICATE_PASSWORD" \
-            -A -t cert -f pkcs12 \
-            -k $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH
-          security set-key-partition-list -S apple-tool:,apple:,codesign: \
-            -s -k "" $KEYCHAIN_PATH
-
-      - name: Sign App
-        if: ${{ secrets.DEVELOPER_ID != '' }}
-        env:
-          DEVELOPER_ID: ${{ secrets.DEVELOPER_ID }}
+      - name: Create Archives
         working-directory: app
         run: |
-          codesign --deep --force --verbose \
-            --options runtime \
-            --timestamp \
-            --sign "$DEVELOPER_ID" \
-            "${{ env.APP_NAME }}.app"
-
-      - name: Create DMG
-        working-directory: app
-        run: |
+          # Create DMG
           mkdir dmg-staging
           cp -R "${{ env.APP_NAME }}.app" dmg-staging/
           ln -s /Applications dmg-staging/Applications
+          hdiutil create -volname "ZMK HUD" -srcfolder dmg-staging -ov -format UDZO "zmk-hud.dmg"
           
-          hdiutil create \
-            -volname "ZMK HUD" \
-            -srcfolder dmg-staging \
-            -ov \
-            -format UDZO \
-            "zmk-hud.dmg"
-
-      - name: Notarize DMG
-        if: ${{ secrets.APPLE_ID != '' }}
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        working-directory: app
-        run: |
-          xcrun notarytool submit zmk-hud.dmg \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" \
-            --wait
-          
-          xcrun stapler staple zmk-hud.dmg
-
-      - name: Create ZIP
-        working-directory: app
-        run: |
+          # Create ZIP
           zip -r "zmk-hud.zip" "${{ env.APP_NAME }}.app"
 
-      - name: Calculate SHA256
-        id: sha
+      - name: Calculate Checksums
+        id: checksum
         working-directory: app
         run: |
           SHA256_DMG=$(shasum -a 256 zmk-hud.dmg | awk '{print $1}')
-          echo "sha256_dmg=${SHA256_DMG}" >> $GITHUB_OUTPUT
           SHA256_ZIP=$(shasum -a 256 zmk-hud.zip | awk '{print $1}')
+          echo "sha256_dmg=${SHA256_DMG}" >> $GITHUB_OUTPUT
           echo "sha256_zip=${SHA256_ZIP}" >> $GITHUB_OUTPUT
-
-      - name: Get Version
-        id: version
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -177,8 +118,10 @@ jobs:
             **Manual:** Download `zmk-hud.dmg` and drag to Applications.
             
             ### Checksums
-            - DMG SHA256: `${{ steps.sha.outputs.sha256_dmg }}`
-            - ZIP SHA256: `${{ steps.sha.outputs.sha256_zip }}`
+            ```
+            zmk-hud.dmg: ${{ steps.checksum.outputs.sha256_dmg }}
+            zmk-hud.zip: ${{ steps.checksum.outputs.sha256_zip }}
+            ```
           draft: false
           prerelease: false
         env:
@@ -186,21 +129,57 @@ jobs:
 
       - name: Update Homebrew Cask
         env:
-          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
-          if [ -z "$HOMEBREW_GITHUB_API_TOKEN" ]; then
-            echo "HOMEBREW_TAP_TOKEN not set, skipping Cask update"
+          if [ -z "$HOMEBREW_TAP_TOKEN" ]; then
+            echo "HOMEBREW_TAP_TOKEN not set, skipping cask update"
             exit 0
           fi
           
           VERSION="${{ steps.version.outputs.version }}"
-          SHA256="${{ steps.sha.outputs.sha256_zip }}"
+          SHA256="${{ steps.checksum.outputs.sha256_zip }}"
           
-          brew tap fgeck/tap
-          brew developer on
-          brew bump-cask-pr \
-            --version "$VERSION" \
-            --sha256 "$SHA256" \
-            --no-browse \
-            --force \
-            fgeck/tap/zmk-hud || echo "Cask auto-update failed - manual update required"
+          # Clone the tap repo
+          git clone https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/fgeck/homebrew-tap.git tap-repo
+          cd tap-repo
+          
+          # Update the cask file
+          cat > Casks/zmk-hud.rb << EOF
+          cask "zmk-hud" do
+            version "${VERSION}"
+            sha256 "${SHA256}"
+
+            url "https://github.com/fgeck/zmk-hud/releases/download/v#{version}/zmk-hud.zip",
+                verified: "github.com/fgeck/zmk-hud"
+            name "ZMK HUD"
+            desc "Floating HUD display for ZMK keyboards showing active layer and key presses"
+            homepage "https://github.com/fgeck/zmk-hud"
+
+            livecheck do
+              url :url
+              strategy :github_latest
+            end
+
+            depends_on macos: ">= :ventura"
+
+            app "ZMKHud.app"
+
+            postflight do
+              system_command "/usr/bin/xattr",
+                             args: ["-dr", "com.apple.quarantine", "#{appdir}/ZMKHud.app"]
+            end
+
+            zap trash: [
+              "~/Library/Application Support/com.fgeck.zmk-hud",
+              "~/Library/Caches/com.fgeck.zmk-hud",
+              "~/Library/Preferences/com.fgeck.zmk-hud.plist",
+            ]
+          end
+          EOF
+          
+          # Commit and push
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/zmk-hud.rb
+          git commit -m "Update zmk-hud to ${VERSION}"
+          git push
